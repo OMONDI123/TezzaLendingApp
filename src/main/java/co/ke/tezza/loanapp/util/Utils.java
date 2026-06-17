@@ -1190,8 +1190,27 @@ public class Utils {
 
 		case GUARANTOR_LOAN_WRITE_OFF_NOTIFICATION:
 			return "Dear {guarantorName}, the {loanType} {documentNo} for borrower {borrowerName} has been written off. Amount written off: {writtenOffAmount}. Reason: {writeOffReason}. Write-off date: {writeOffDate}. Approved by: {approvedBy}. Outstanding balance: {outstandingBalance}.";
+			// ========== FEE NOTIFICATIONS ==========
+		case FEE_APPLIED_NOTIFICATION:
+		    return "Dear {username}, a {feeType} of {feeAmount} has been applied to your {loanType} {documentNo}. Fee description: {feeDescription}. Application date: {applicationDate}. Current balance: {balance}. Outstanding balance: {outstandingBalance}.";
 
-		// ========== DEFAULT ==========
+		case GUARANTOR_FEE_NOTIFICATION:
+		    return "Dear {guarantorName}, a {feeType} of {feeAmount} has been applied to the {loanType} {documentNo} for borrower {borrowerName}. Fee description: {feeDescription}. Application date: {applicationDate}. Current balance: {balance}. Outstanding balance: {outstandingBalance}.";
+
+		case DAILY_FEE_APPLIED_NOTIFICATION:
+		    return "Dear {username}, a daily fee of {feeAmount} has been accrued on your {loanType} {documentNo}. Daily fee rate: {dailyFeeRate}. Days accrued: {daysAccrued}. Period: {periodStart} to {periodEnd}. Total daily fee accrued: {totalDailyFeeAccrued}. Current balance: {balance}. Outstanding balance: {outstandingBalance}.";
+
+		case GUARANTOR_DAILY_FEE_NOTIFICATION:
+		    return "Dear {guarantorName}, a daily fee of {feeAmount} has been accrued on the {loanType} {documentNo} for borrower {borrowerName}. Daily fee rate: {dailyFeeRate}. Days accrued: {daysAccrued}. Period: {periodStart} to {periodEnd}. Total daily fee accrued: {totalDailyFeeAccrued}. Current balance: {balance}. Outstanding balance: {outstandingBalance}.";
+
+		case SERVICE_FEE_APPLIED_NOTIFICATION:
+		    return "Dear {username}, a service fee of {feeAmount} has been applied to your {loanType} {documentNo}. Service fee type: {serviceFeeType}. Fee timing: {feeTiming}. Application date: {applicationDate}. Current balance: {balance}. Outstanding balance: {outstandingBalance}.";
+
+		case GUARANTOR_SERVICE_FEE_NOTIFICATION:
+		    return "Dear {guarantorName}, a service fee of {feeAmount} has been applied to the {loanType} {documentNo} for borrower {borrowerName}. Service fee type: {serviceFeeType}. Fee timing: {feeTiming}. Current balance: {balance}. Outstanding balance: {outstandingBalance}.";
+
+		
+		
 		default:
 			return "Dear {username}, notification regarding your account. Please log in for details.";
 		}

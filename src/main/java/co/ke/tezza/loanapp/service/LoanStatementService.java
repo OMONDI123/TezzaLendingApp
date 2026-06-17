@@ -2,6 +2,7 @@ package co.ke.tezza.loanapp.service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -20,6 +21,7 @@ import co.ke.tezza.loanapp.entity.MLoanApplication;
 import co.ke.tezza.loanapp.entity.MLoanStatement;
 import co.ke.tezza.loanapp.enums.InstallmentTransactionType;
 import co.ke.tezza.loanapp.enums.LoanTransactionType;
+import co.ke.tezza.loanapp.enums.RepaymentScheduleTypeEnum;
 import co.ke.tezza.loanapp.repository.InstallmentRepository;
 import co.ke.tezza.loanapp.repository.InstallmentStatementRepository;
 import co.ke.tezza.loanapp.repository.LoanApplicationRepository;
@@ -55,7 +57,6 @@ public class LoanStatementService {
 	// === MAIN TRANSACTION RECORDING METHODS ===
 	// ===============================================
 
-	
 	/** Record Loan Disbursement (Loan given to borrower) */
 	public void recordDisbursement(Long loanId, Long installmentId, BigDecimal amount, String ref,
 			LocalDateTime expectedDisursementDate) {
@@ -584,8 +585,6 @@ public class LoanStatementService {
 		installmentStatementRepository.save(entry);
 	}
 
-	
-
 	// ===============================================
 	// === DEFAULT REASON GENERATORS ===
 	// ===============================================
@@ -1036,5 +1035,174 @@ public class LoanStatementService {
 
 		return installmentRepository.findByIsActiveAndLoanOrderByInstallmentIdAsc(true, loan).stream()
 				.map(objectsMapper::mapInstallments).collect(Collectors.toList());
+	}
+
+	public void recordDailyFee(Long loanApplicationId, Object object, BigDecimal incrementalFee) {
+		if (loanApplicationId != null && incrementalFee != null && incrementalFee.compareTo(BigDecimal.ZERO) > 0) {
+			MLoanApplication loan = loanApplicationRepository.findById(loanApplicationId).orElse(null);
+			if (loan != null) {
+				// Check if loan has installments
+				boolean hasInstallments = loan.getLoanProductConfiguration() != null
+						&& loan.getLoanProductConfiguration().getRepaymentScheduleType() != null
+						&& loan.getLoanProductConfiguration().getRepaymentScheduleType()
+								.equals(RepaymentScheduleTypeEnum.INSTALLMENTS);
+
+				Long installmentId = null;
+				if (hasInstallments) {
+					// Get the first active installment
+					MInstallments installment = installmentRepository
+							.findTop1ByIsActiveAndBalanceGreaterThanAndLoanOrderByInstallmentIdAsc(true,
+									BigDecimal.ZERO, loan);
+					if (installment != null) {
+						installmentId = installment.getInstallmentId();
+					}
+				}
+
+				recordDailyFee(loanApplicationId, installmentId, incrementalFee,
+						"DAILY_FEE_" + System.currentTimeMillis(),
+						loan.getLastDailyFeeCalculationDate() != null
+								? loan.getLastDailyFeeCalculationDate().toInstant().atZone(ZoneId.systemDefault())
+										.toLocalDateTime()
+								: LocalDateTime.now().minusDays(1),
+						LocalDateTime.now());
+			}
+		}
+	}
+
+	/**
+	 * Record Service Fee (convenience method for scheduler use)
+	 */
+	public void recordServiceFee(Long loanApplicationId, Object object, BigDecimal serviceFee) {
+		if (loanApplicationId != null && serviceFee != null && serviceFee.compareTo(BigDecimal.ZERO) > 0) {
+			// Try to get the loan to determine if it has installments
+			MLoanApplication loan = loanApplicationRepository.findById(loanApplicationId).orElse(null);
+			if (loan != null) {
+				// Check if loan has installments
+				boolean hasInstallments = loan.getLoanProductConfiguration() != null
+						&& loan.getLoanProductConfiguration().getRepaymentScheduleType() != null
+						&& loan.getLoanProductConfiguration().getRepaymentScheduleType()
+								.equals(RepaymentScheduleTypeEnum.INSTALLMENTS);
+
+				Long installmentId = null;
+				if (hasInstallments) {
+					// Get the first active installment
+					MInstallments installment = installmentRepository
+							.findTop1ByIsActiveAndBalanceGreaterThanAndLoanOrderByInstallmentIdAsc(true,
+									BigDecimal.ZERO, loan);
+					if (installment != null) {
+						installmentId = installment.getInstallmentId();
+					}
+				}
+
+				recordServiceFee(loanApplicationId, installmentId, serviceFee,
+						"SERVICE_FEE_" + System.currentTimeMillis(), "ORIGINATION");
+			}
+		}
+	}
+
+	/**
+	 * Record Service Fee charged on a loan
+	 * 
+	 * @param loanId        The loan application ID
+	 * @param installmentId The installment ID (can be null if not
+	 *                      installment-based)
+	 * @param serviceFee    The service fee amount
+	 * @param ref           Reference number (optional)
+	 * @param feeTiming     The timing of the fee (ORIGINATION or POST_DISBURSEMENT)
+	 */
+	public void recordServiceFee(Long loanId, Long installmentId, BigDecimal serviceFee, String ref, String feeTiming) {
+		if (serviceFee == null || serviceFee.compareTo(BigDecimal.ZERO) <= 0) {
+			return;
+		}
+
+		String defaultReason = "Service fee charged (" + (feeTiming != null ? feeTiming : "ORIGINATION") + ")";
+
+		// Record at installment level if installmentId is provided
+		if (installmentId != null) {
+			createInstallmentStatement(installmentId, InstallmentTransactionType.PROCESSING_FEE, serviceFee,
+					BigDecimal.ZERO, ref, null, null, defaultReason);
+		}
+
+		// Record at loan level
+		if (loanId != null) {
+			createLoanStatement(loanId, LoanTransactionType.PROCESSING_FEE, serviceFee, BigDecimal.ZERO, ref, null,
+					null, defaultReason);
+		}
+	}
+
+	/**
+	 * Record Daily Fee accrued on a loan
+	 * 
+	 * @param loanId        The loan application ID
+	 * @param installmentId The installment ID (can be null if not
+	 *                      installment-based)
+	 * @param dailyFee      The daily fee amount accrued
+	 * @param ref           Reference number (optional)
+	 * @param fromDate      The start date of the accrual period
+	 * @param toDate        The end date of the accrual period
+	 */
+	public void recordDailyFee(Long loanId, Long installmentId, BigDecimal dailyFee, String ref, LocalDateTime fromDate,
+			LocalDateTime toDate) {
+		if (dailyFee == null || dailyFee.compareTo(BigDecimal.ZERO) <= 0) {
+			return;
+		}
+
+		String periodDesc = "";
+		if (fromDate != null && toDate != null) {
+			periodDesc = " for period " + fromDate.toLocalDate() + " to " + toDate.toLocalDate();
+		}
+		String defaultReason = "Daily fee accrued" + periodDesc;
+
+		// Record at installment level if installmentId is provided
+		if (installmentId != null) {
+			createInstallmentStatement(installmentId, InstallmentTransactionType.LATE_FEE, dailyFee, BigDecimal.ZERO,
+					ref, null, null, defaultReason);
+		}
+
+		// Record at loan level
+		if (loanId != null) {
+			createLoanStatement(loanId, LoanTransactionType.LATE_FEE, dailyFee, BigDecimal.ZERO, ref, null, null,
+					defaultReason);
+		}
+	}
+
+	// ===============================================
+	// === OVERLOADED CONVENIENCE METHODS ===
+	// ===============================================
+
+	/**
+	 * Record Service Fee at loan level only
+	 */
+	public void recordServiceFee(Long loanId, BigDecimal serviceFee, String ref, String feeTiming) {
+		recordServiceFee(loanId, null, serviceFee, ref, feeTiming);
+	}
+
+	/**
+	 * Record Service Fee at loan level only (with default timing)
+	 */
+	public void recordServiceFee(Long loanId, BigDecimal serviceFee) {
+		recordServiceFee(loanId, null, serviceFee, null, "ORIGINATION");
+	}
+
+	/**
+	 * Record Daily Fee at loan level only
+	 */
+	public void recordDailyFee(Long loanId, BigDecimal dailyFee, String ref, LocalDateTime fromDate,
+			LocalDateTime toDate) {
+		recordDailyFee(loanId, null, dailyFee, ref, fromDate, toDate);
+	}
+
+	/**
+	 * Record Daily Fee at loan level only (with current date as toDate)
+	 */
+	public void recordDailyFee(Long loanId, BigDecimal dailyFee, LocalDateTime fromDate) {
+		recordDailyFee(loanId, null, dailyFee, null, fromDate, LocalDateTime.now());
+	}
+
+	/**
+	 * Record Daily Fee at loan level only (with default from/to dates)
+	 */
+	public void recordDailyFee(Long loanId, BigDecimal dailyFee) {
+		recordDailyFee(loanId, null, dailyFee, null, LocalDateTime.now().minusDays(1), LocalDateTime.now());
 	}
 }

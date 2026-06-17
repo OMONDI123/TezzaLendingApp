@@ -37,7 +37,6 @@ public class BorrowersController {
     public String getAllBorrowers(@PathVariable("page") int page, 
                                   @PathVariable("size") int size,
                                   @RequestParam(value = "searchTerm", required = false) String searchTerm) {
-        // Add logging
         
         Page<IndividualBorrowerResponse> borrowers = borrowersServices.getAllIndividualBorrowers(page, size, searchTerm);
         logger.debug("Called BorrowersController.getAllBorrowers");

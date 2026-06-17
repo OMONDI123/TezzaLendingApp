@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import co.ke.tezza.loanapp.entity.MADSysConfig;
 import co.ke.tezza.loanapp.entity.MApprovalSteps;
 import co.ke.tezza.loanapp.entity.MGuarantorLoan;
+import co.ke.tezza.loanapp.entity.MInstallments;
 import co.ke.tezza.loanapp.entity.MLoanApplication;
 import co.ke.tezza.loanapp.entity.MLoanProductConfiguration;
 import co.ke.tezza.loanapp.entity.MNextOfKin;
@@ -24,6 +25,7 @@ import co.ke.tezza.loanapp.entity.MUser;
 import co.ke.tezza.loanapp.enums.ApprovalStage;
 import co.ke.tezza.loanapp.enums.DebtTypeEnum;
 import co.ke.tezza.loanapp.enums.DocStatus;
+import co.ke.tezza.loanapp.enums.FeeTimingEnum;
 import co.ke.tezza.loanapp.enums.FeeTypeEnum;
 import co.ke.tezza.loanapp.enums.InterestCalculationMethodEnum;
 import co.ke.tezza.loanapp.enums.LoanRepaymentStatus;
@@ -32,6 +34,7 @@ import co.ke.tezza.loanapp.enums.RepaymentScheduleTypeEnum;
 import co.ke.tezza.loanapp.enums.SettingCategoriesEnum;
 import co.ke.tezza.loanapp.exceptions.SetUpExceptions;
 import co.ke.tezza.loanapp.repository.GuarantorLoanRepository;
+import co.ke.tezza.loanapp.repository.InstallmentRepository;
 import co.ke.tezza.loanapp.repository.LoanApplicationRepository;
 import co.ke.tezza.loanapp.repository.UserRepository;
 import co.ke.tezza.loanapp.response.LoanApplicationResponse;
@@ -71,6 +74,11 @@ public class LoanApprovalWorkFlowService {
 
 	@Autowired
 	private ObjectsMapper objectsMapper;
+	
+	@Autowired
+    private FeeCalculatorService feeCalculatorService;
+	@Autowired
+    private InstallmentRepository installmentRepository;
 
 	public void triggerApprovalStep(MApprovalSteps step, MLoanApplication application) {
 		MRoles role = step.getRoleInvolved();
@@ -157,59 +165,63 @@ public class LoanApprovalWorkFlowService {
 				loanApplicationService.mapLoanApplication(app));
 	}
 
-	/**
-	 * Helper method to complete loan approval with proper interest calculation This
-	 * consolidates the duplicate logic from both applyForLoan and approveLoan
-	 */
-	/**
-	 * Helper method to complete loan approval with proper interest calculation This
-	 * consolidates the duplicate logic from both applyForLoan and approveLoan
-	 */
-	public void completeLoanApproval(MLoanApplication application) {
-		application.setApprovalDate(new Date());
-		application.setApproved(true);
-		application.setApprovedAmount(application.getAppliedAmount()); // Default to applied amount
-		application.setExpectedDisbursementDate(application.getExpectedDisbursementDate());
-		application.setApprovalStage(ApprovalStage.APPROVED);
-		application.setDocStatus(DocStatus.APPROVED);
-		application.setRepaymentStatus(LoanRepaymentStatus.PENDING);
-		application.setDecliningPrincipal(application.getApprovedAmount());
+	 public void completeLoanApproval(MLoanApplication application) {
+	        application.setApprovalDate(new Date());
+	        application.setApproved(true);
+	        application.setApprovedAmount(application.getAppliedAmount());
+	        application.setExpectedDisbursementDate(application.getExpectedDisbursementDate());
+	        application.setApprovalStage(ApprovalStage.APPROVED);
+	        application.setDocStatus(DocStatus.APPROVED);
+	        application.setRepaymentStatus(LoanRepaymentStatus.PENDING);
+	        application.setDecliningPrincipal(application.getApprovedAmount());
 
-		// ========== NEW: Set Loan State ==========
-		application.setLoanState(LoanStateEnum.APPROVED);
-		application.setStateChangeDate(new Date());
-		application.setLastStateChangeTrigger("APPROVAL");
+	        application.setLoanState(LoanStateEnum.APPROVED);
+	        application.setStateChangeDate(new Date());
+	        application.setLastStateChangeTrigger("APPROVAL");
 
-		// Calculate initial interest based on loan type and calculation method
-		BigDecimal initialInterest = calculateInitialInterest(application);
-		application.setInterestsEarned(initialInterest);
+	        // Calculate initial interest
+	        BigDecimal initialInterest = calculateInitialInterest(application);
+	        application.setInterestsEarned(initialInterest);
 
-		// ========== NEW: Calculate Service Fee ==========
-		BigDecimal serviceFee = calculateServiceFee(application);
-		application.setServiceFeeCharged(serviceFee);
+	        // ========== USE FeeCalculatorService ==========
+	        // Check if service fee should be charged at ORIGINATION
+	        if (feeCalculatorService.shouldChargeServiceFeeNow(application, FeeTimingEnum.ORIGINATION)) {
+	            BigDecimal serviceFee = feeCalculatorService.calculateServiceFee(application);
+	            application.setServiceFeeCharged(serviceFee);
+	            application.setLastServiceFeeCalculationDate(new Date());
+	        } else {
+	            // Don't charge at origination - will be charged later by scheduler
+	            application.setServiceFeeCharged(BigDecimal.ZERO);
+	        }
 
-		// ========== NEW: Calculate Daily Fee ==========
-		BigDecimal dailyFee = calculateDailyFee(application);
-		application.setDailyFeeCharged(dailyFee);
+	        application.setDailyFeeCharged(BigDecimal.ZERO);
 
-		// ========== NEW: Update Balance with Fees ==========
-		BigDecimal totalBalance = application.getApprovedAmount()
-				.add(initialInterest != null ? initialInterest : BigDecimal.ZERO)
-				.add(serviceFee != null ? serviceFee : BigDecimal.ZERO)
-				.add(dailyFee != null ? dailyFee : BigDecimal.ZERO);
-		application.setBalance(totalBalance);
+	        BigDecimal totalBalance = application.getApprovedAmount()
+	                .add(initialInterest != null ? initialInterest : BigDecimal.ZERO)
+	                .add(application.getServiceFeeCharged() != null ? application.getServiceFeeCharged() : BigDecimal.ZERO);
+	        application.setBalance(totalBalance);
 
-		// Set installment distribution if applicable
-		if (application.getLoanProductConfiguration().getRepaymentScheduleType() != null
-				&& application.getLoanProductConfiguration().getRepaymentScheduleType()
-						.equals(RepaymentScheduleTypeEnum.INSTALLMENTS)) {
-			application.setInstallmentDistributionBalance(application.getApprovedAmount());
-			manageInstallments.generateFirstInstallmentForLoan(application);
-			manageInstallments.updateFirstInstallmentInterest(application);
-		}
+	        if (application.getLoanProductConfiguration().getRepaymentScheduleType() != null
+	                && application.getLoanProductConfiguration().getRepaymentScheduleType()
+	                        .equals(RepaymentScheduleTypeEnum.INSTALLMENTS)) {
+	            application.setInstallmentDistributionBalance(application.getApprovedAmount());
+	            manageInstallments.generateFirstInstallmentForLoan(application);
+	            manageInstallments.updateFirstInstallmentInterest(application);
+	            
+	            if (application.getServiceFeeCharged() != null && application.getServiceFeeCharged().compareTo(BigDecimal.ZERO) > 0) {
+	                MInstallments firstInstallment = installmentRepository
+	                        .findTop1ByIsActiveAndBalanceGreaterThanAndLoanOrderByInstallmentIdAsc(true,BigDecimal.ZERO, application);
+	                if (firstInstallment != null) {
+	                    firstInstallment.setBalance(firstInstallment.getBalance().add(application.getServiceFeeCharged()));
+	                    firstInstallment.setServiceFeeCharged(application.getServiceFeeCharged());
+	                    installmentRepository.save(firstInstallment);
+	                }
+	            }
+	        }
 
-		application.setPenaltyGracePeriod(application.getLoanProductConfiguration().getPenaltyGracePeriodDays());
-	}
+	        application.setPenaltyGracePeriod(application.getLoanProductConfiguration().getPenaltyGracePeriodDays());
+	    }
+	
 
 	/**
 	 * Approve a loan application at the current workflow step. Advances to the next

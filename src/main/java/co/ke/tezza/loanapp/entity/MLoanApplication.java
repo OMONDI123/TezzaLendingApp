@@ -264,6 +264,9 @@ public class MLoanApplication extends AuditModel {
     // ------------------------------------------
     @Column(name = "last_sweep_run_date")
     private Date lastSweepRunDate;
+    
+    private Date lastServiceFeeCalculationDate;
+    private Date lastDailyFeeCalculationDate;
 
     @Column(name = "sweep_run_count")
     private Integer sweepRunCount = 0;

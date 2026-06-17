@@ -779,15 +779,44 @@ public enum SmsTypeEnum {
 	        new String[] { "guarantorName", "borrowerName", "loanType", "documentNo", "reinstatementDate",
 	                       "reinstatementReason", "outstandingBalance" }),
 
-	// ========== LOAN WRITE-OFF NOTIFICATIONS ==========
 	LOAN_WRITE_OFF_NOTIFICATION("LOAN_WRITE_OFF_NOTIFICATION", "Loan Write-Off Notification",
 	        new String[] { "username", "documentNo", "loanType", "writtenOffAmount", "writeOffReason",
-	                       "writeOffDate", "approvedBy", "remainingBalance", "loanStatus", "outstandingBalance" }),
+	                "writeOffDate", "approvedBy", "remainingBalance", "loanStatus", "outstandingBalance" }),
 
 	GUARANTOR_LOAN_WRITE_OFF_NOTIFICATION("GUARANTOR_LOAN_WRITE_OFF_NOTIFICATION", 
 	        "Guarantor Loan Write-Off Notification",
 	        new String[] { "guarantorName", "borrowerName", "loanType", "documentNo", "writtenOffAmount",
-	                       "writeOffReason", "writeOffDate", "approvedBy", "outstandingBalance" }),
+	                "writeOffReason", "writeOffDate", "approvedBy", "outstandingBalance" }),
+
+
+	// ========== FEE NOTIFICATIONS ==========
+	FEE_APPLIED_NOTIFICATION("FEE_APPLIED_NOTIFICATION", "Fee Applied Notification",
+	        new String[] { "username", "documentNo", "loanType", "feeAmount", "feeType", "feeDescription",
+	                "applicationDate", "balance", "outstandingBalance", "feeApplied" }),
+
+	GUARANTOR_FEE_NOTIFICATION("GUARANTOR_FEE_NOTIFICATION", "Guarantor Fee Notification",
+	        new String[] { "guarantorName", "borrowerName", "loanType", "documentNo", "feeAmount", "feeType",
+	                "feeDescription", "applicationDate", "balance", "borrowerBalance", "outstandingBalance",
+	                "feeApplied" }),
+
+	DAILY_FEE_APPLIED_NOTIFICATION("DAILY_FEE_APPLIED_NOTIFICATION", "Daily Fee Applied Notification",
+	        new String[] { "username", "documentNo", "loanType", "feeAmount", "totalDailyFeeAccrued", "feeType",
+	                "feeDescription", "applicationDate", "periodStart", "periodEnd", "daysAccrued", "dailyFeeRate",
+	                "balance", "outstandingBalance" }),
+
+	GUARANTOR_DAILY_FEE_NOTIFICATION("GUARANTOR_DAILY_FEE_NOTIFICATION", "Guarantor Daily Fee Notification",
+	        new String[] { "guarantorName", "borrowerName", "loanType", "documentNo", "feeAmount",
+	                "totalDailyFeeAccrued", "feeType", "periodStart", "periodEnd", "daysAccrued", "dailyFeeRate",
+	                "balance", "outstandingBalance" }),
+
+	SERVICE_FEE_APPLIED_NOTIFICATION("SERVICE_FEE_APPLIED_NOTIFICATION", "Service Fee Applied Notification",
+	        new String[] { "username", "documentNo", "loanType", "feeAmount", "feeType", "feeTiming",
+	                "serviceFeeType", "serviceFeeRate", "feeDescription", "applicationDate", "balance",
+	                "outstandingBalance" }),
+
+	GUARANTOR_SERVICE_FEE_NOTIFICATION("GUARANTOR_SERVICE_FEE_NOTIFICATION", "Guarantor Service Fee Notification",
+	        new String[] { "guarantorName", "borrowerName", "loanType", "documentNo", "feeAmount", "feeType",
+	                "feeTiming", "serviceFeeType", "feeDescription", "balance", "outstandingBalance" }),
 
 	// ========== ANNOUNCEMENT ==========
 	ANNOUNCEMENT_NOTIFICATION("ANNOUNCEMENT_NOTIFICATION", "Announcement Notification",

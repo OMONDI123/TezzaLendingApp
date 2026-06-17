@@ -3629,6 +3629,253 @@ public class SmsHandlersService {
 	    }
 	}
 
+	// ==================== FEE NOTIFICATIONS ====================
+
+	/**
+	 * Handle fee applied notification for the borrower
+	 * 
+	 * @param loan The loan on which the fee was applied
+	 * @param feeAmount The fee amount applied
+	 * @param balance The current balance after fee application
+	 * @param feeType The type of fee (Service Fee, Daily Fee, etc.)
+	 * @param feeDescription A description of the fee
+	 * @param applicationDate The date the fee was applied
+	 * @param object placeholder for additional data (can be null)
+	 * @param timeToSend The time to send the notification
+	 * @return true if notification was sent successfully
+	 */
+	@Transactional
+	public boolean handleFeeAppliedNotification(MLoanApplication loan, BigDecimal feeAmount, BigDecimal balance,
+	        String feeType, String feeDescription, Date applicationDate, Object object, LocalDateTime timeToSend) {
+	    try {
+	        Map<String, String> placeholders = buildLoanPlaceholders(loan);
+	        placeholders.put("feeAmount", formatAmount(feeAmount));
+	        placeholders.put("feeType", getSafeValue(feeType));
+	        placeholders.put("feeDescription", getSafeValue(feeDescription));
+	        placeholders.put("applicationDate", formatDate(applicationDate != null ? applicationDate : new Date()));
+	        placeholders.put("balance", formatAmount(balance));
+	        placeholders.put("outstandingBalance", formatAmount(balance));
+	        placeholders.put("feeApplied", formatAmount(feeAmount));
+
+	        if (timeToSend == null) {
+	            timeToSend = LocalDateTime.now();
+	        }
+
+	        boolean borrowerSent = sendBorrowerSms(SmsTypeEnum.FEE_APPLIED_NOTIFICATION, placeholders, loan, null,
+	                null, timeToSend, null);
+
+	        // Also notify assignee if exists
+	        if (loan.getAssignee() != null) {
+	            String assigneePhone = loan.getAssignee().getPhoneNumber();
+	            if (assigneePhone != null && !assigneePhone.trim().isEmpty()) {
+	                sendGenericSms(SmsTypeEnum.FEE_APPLIED_NOTIFICATION, placeholders,
+	                        loan.getAdOrgID(), loan.getAdClientId(), assigneePhone,
+	                        null, loan.getLoanApplicationId(), timeToSend, null, null);
+	            }
+	        }
+
+	        log.info("✅ Fee applied notification sent to borrower for loan: {}, Fee Type: {}, Amount: {}",
+	                loan.getDocumentNo(), feeType, feeAmount);
+	        return borrowerSent;
+	    } catch (Exception e) {
+	        log.error("Error handling fee applied notification for loan {}: {}",
+	                loan.getLoanApplicationId(), e.getMessage(), e);
+	        return false;
+	    }
+	}
+
+	/**
+	 * Handle fee notification for a specific guarantor
+	 * 
+	 * @param guarantor The guarantor to notify
+	 * @param loan The loan on which the fee was applied
+	 * @param feeAmount The fee amount applied
+	 * @param balance The current balance after fee application
+	 * @param feeType The type of fee (Service Fee, Daily Fee, etc.)
+	 * @param feeDescription A description of the fee
+	 * @param applicationDate The date the fee was applied
+	 * @param object placeholder for additional data (can be null)
+	 * @param timeToSend The time to send the notification
+	 * @return true if notification was sent successfully
+	 */
+	@Transactional
+	public boolean handleGuarantorFeeNotification(MNextOfKin guarantor, MLoanApplication loan, BigDecimal feeAmount,
+	        BigDecimal balance, String feeType, String feeDescription, Date applicationDate, Object object,
+	        LocalDateTime timeToSend) {
+	    try {
+	        Map<String, String> placeholders = buildGuarantorPlaceholders(guarantor, loan);
+	        placeholders.put("feeAmount", formatAmount(feeAmount));
+	        placeholders.put("feeType", getSafeValue(feeType));
+	        placeholders.put("feeDescription", getSafeValue(feeDescription));
+	        placeholders.put("applicationDate", formatDate(applicationDate != null ? applicationDate : new Date()));
+	        placeholders.put("balance", formatAmount(balance));
+	        placeholders.put("outstandingBalance", formatAmount(balance));
+	        placeholders.put("borrowerBalance", formatAmount(balance));
+	        placeholders.put("feeApplied", formatAmount(feeAmount));
+
+	        if (timeToSend == null) {
+	            timeToSend = LocalDateTime.now();
+	        }
+
+	        boolean guarantorSent = sendGuarantorSms(SmsTypeEnum.GUARANTOR_FEE_NOTIFICATION, placeholders,
+	                guarantor, loan, null, null, timeToSend);
+
+	        log.info("✅ Fee notification sent to guarantor: {} for loan: {}, Fee Type: {}, Amount: {}",
+	                guarantor.getFullName(), loan.getDocumentNo(), feeType, feeAmount);
+	        return guarantorSent;
+	    } catch (Exception e) {
+	        log.error("Error handling guarantor fee notification for loan {}: {}",
+	                loan.getLoanApplicationId(), e.getMessage(), e);
+	        return false;
+	    }
+	}
+
+	// ==================== DAILY FEE NOTIFICATIONS ====================
+
+	/**
+	 * Handle daily fee applied notification
+	 * 
+	 * @param loan The loan on which the daily fee was applied
+	 * @param feeAmount The daily fee amount applied
+	 * @param totalDailyFeeAccrued The total daily fee accrued so far
+	 * @param periodStart The start date of the fee period
+	 * @param periodEnd The end date of the fee period
+	 * @param daysAccrued The number of days the fee was accrued for
+	 * @param dailyFeeRate The daily fee rate
+	 * @param timeToSend The time to send the notification
+	 * @return true if notification was sent successfully
+	 */
+	@Transactional
+	public boolean handleDailyFeeAppliedNotification(MLoanApplication loan, BigDecimal feeAmount,
+	        BigDecimal totalDailyFeeAccrued, Date periodStart, Date periodEnd, Integer daysAccrued,
+	        BigDecimal dailyFeeRate, LocalDateTime timeToSend) {
+	    try {
+	        Map<String, String> placeholders = buildLoanPlaceholders(loan);
+	        placeholders.put("feeAmount", formatAmount(feeAmount));
+	        placeholders.put("totalDailyFeeAccrued", formatAmount(totalDailyFeeAccrued));
+	        placeholders.put("feeType", "Daily Fee");
+	        placeholders.put("feeDescription", "Daily flat fee of " + formatAmount(dailyFeeRate) + " per day");
+	        placeholders.put("applicationDate", formatDate(new Date()));
+	        placeholders.put("periodStart", formatDate(periodStart));
+	        placeholders.put("periodEnd", formatDate(periodEnd));
+	        placeholders.put("daysAccrued", String.valueOf(daysAccrued != null ? daysAccrued : 1));
+	        placeholders.put("dailyFeeRate", formatAmount(dailyFeeRate));
+	        placeholders.put("balance", formatAmount(loan.getBalance()));
+	        placeholders.put("outstandingBalance", formatAmount(loan.getBalance()));
+
+	        if (timeToSend == null) {
+	            timeToSend = LocalDateTime.now();
+	        }
+
+	        boolean borrowerSent = sendBorrowerSms(SmsTypeEnum.DAILY_FEE_APPLIED_NOTIFICATION, placeholders, loan,
+	                null, null, timeToSend, null);
+
+	        // Notify assignee
+	        if (loan.getAssignee() != null) {
+	            String assigneePhone = loan.getAssignee().getPhoneNumber();
+	            if (assigneePhone != null && !assigneePhone.trim().isEmpty()) {
+	                sendGenericSms(SmsTypeEnum.DAILY_FEE_APPLIED_NOTIFICATION, placeholders,
+	                        loan.getAdOrgID(), loan.getAdClientId(), assigneePhone,
+	                        null, loan.getLoanApplicationId(), timeToSend, null, null);
+	            }
+	        }
+
+	        // Notify guarantors
+	        if (loan.getGuarantors() != null && !loan.getGuarantors().isEmpty()) {
+	            for (MNextOfKin guarantor : loan.getGuarantors()) {
+	                Map<String, String> guarantorPlaceholders = buildGuarantorPlaceholders(guarantor, loan);
+	                guarantorPlaceholders.put("feeAmount", formatAmount(feeAmount));
+	                guarantorPlaceholders.put("totalDailyFeeAccrued", formatAmount(totalDailyFeeAccrued));
+	                guarantorPlaceholders.put("feeType", "Daily Fee");
+	                guarantorPlaceholders.put("periodStart", formatDate(periodStart));
+	                guarantorPlaceholders.put("periodEnd", formatDate(periodEnd));
+	                guarantorPlaceholders.put("daysAccrued", String.valueOf(daysAccrued != null ? daysAccrued : 1));
+	                guarantorPlaceholders.put("dailyFeeRate", formatAmount(dailyFeeRate));
+	                guarantorPlaceholders.put("balance", formatAmount(loan.getBalance()));
+	                sendGuarantorSms(SmsTypeEnum.GUARANTOR_DAILY_FEE_NOTIFICATION, guarantorPlaceholders,
+	                        guarantor, loan, null, null, timeToSend);
+	            }
+	        }
+
+	        log.info("✅ Daily fee notification sent for loan: {}, Amount: {}, Days: {}",
+	                loan.getDocumentNo(), feeAmount, daysAccrued);
+	        return borrowerSent;
+	    } catch (Exception e) {
+	        log.error("Error handling daily fee notification for loan {}: {}",
+	                loan.getLoanApplicationId(), e.getMessage(), e);
+	        return false;
+	    }
+	}
+
+	// ==================== SERVICE FEE NOTIFICATIONS ====================
+
+	/**
+	 * Handle service fee applied notification
+	 * 
+	 * @param loan The loan on which the service fee was applied
+	 * @param feeAmount The service fee amount
+	 * @param feeTiming The timing of the fee (ORIGINATION or POST_DISBURSEMENT)
+	 * @param serviceFeeType The type of service fee (FIXED or PERCENTAGE)
+	 * @param serviceFeeRate The rate or amount
+	 * @param timeToSend The time to send the notification
+	 * @return true if notification was sent successfully
+	 */
+	@Transactional
+	public boolean handleServiceFeeAppliedNotification(MLoanApplication loan, BigDecimal feeAmount,
+	        String feeTiming, String serviceFeeType, BigDecimal serviceFeeRate, LocalDateTime timeToSend) {
+	    try {
+	        Map<String, String> placeholders = buildLoanPlaceholders(loan);
+	        placeholders.put("feeAmount", formatAmount(feeAmount));
+	        placeholders.put("feeType", "Service Fee");
+	        placeholders.put("feeTiming", getSafeValue(feeTiming));
+	        placeholders.put("serviceFeeType", getSafeValue(serviceFeeType));
+	        placeholders.put("serviceFeeRate", formatAmount(serviceFeeRate));
+	        placeholders.put("feeDescription", "Service fee charged at " + getSafeValue(feeTiming));
+	        placeholders.put("applicationDate", formatDate(new Date()));
+	        placeholders.put("balance", formatAmount(loan.getBalance()));
+	        placeholders.put("outstandingBalance", formatAmount(loan.getBalance()));
+
+	        if (timeToSend == null) {
+	            timeToSend = LocalDateTime.now();
+	        }
+
+	        boolean borrowerSent = sendBorrowerSms(SmsTypeEnum.SERVICE_FEE_APPLIED_NOTIFICATION, placeholders, loan,
+	                null, null, timeToSend, null);
+
+	        // Notify assignee
+	        if (loan.getAssignee() != null) {
+	            String assigneePhone = loan.getAssignee().getPhoneNumber();
+	            if (assigneePhone != null && !assigneePhone.trim().isEmpty()) {
+	                sendGenericSms(SmsTypeEnum.SERVICE_FEE_APPLIED_NOTIFICATION, placeholders,
+	                        loan.getAdOrgID(), loan.getAdClientId(), assigneePhone,
+	                        null, loan.getLoanApplicationId(), timeToSend, null, null);
+	            }
+	        }
+
+	        // Notify guarantors
+	        if (loan.getGuarantors() != null && !loan.getGuarantors().isEmpty()) {
+	            for (MNextOfKin guarantor : loan.getGuarantors()) {
+	                Map<String, String> guarantorPlaceholders = buildGuarantorPlaceholders(guarantor, loan);
+	                guarantorPlaceholders.put("feeAmount", formatAmount(feeAmount));
+	                guarantorPlaceholders.put("feeType", "Service Fee");
+	                guarantorPlaceholders.put("feeTiming", getSafeValue(feeTiming));
+	                guarantorPlaceholders.put("serviceFeeType", getSafeValue(serviceFeeType));
+	                guarantorPlaceholders.put("feeDescription", "Service fee charged at " + getSafeValue(feeTiming));
+	                sendGuarantorSms(SmsTypeEnum.GUARANTOR_SERVICE_FEE_NOTIFICATION, guarantorPlaceholders,
+	                        guarantor, loan, null, null, timeToSend);
+	            }
+	        }
+
+	        log.info("✅ Service fee notification sent for loan: {}, Amount: {}, Timing: {}",
+	                loan.getDocumentNo(), feeAmount, feeTiming);
+	        return borrowerSent;
+	    } catch (Exception e) {
+	        log.error("Error handling service fee notification for loan {}: {}",
+	                loan.getLoanApplicationId(), e.getMessage(), e);
+	        return false;
+	    }
+	}
+
 	
 	
 	

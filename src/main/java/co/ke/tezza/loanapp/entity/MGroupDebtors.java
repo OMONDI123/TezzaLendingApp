@@ -1,11 +1,14 @@
 package co.ke.tezza.loanapp.entity;
 
+import java.math.BigDecimal;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
 
 import javax.persistence.*;
 
+import co.ke.tezza.loanapp.enums.CustomerEligibilityStatus;
+import co.ke.tezza.loanapp.model.CreditEligible;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -15,7 +18,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Entity
 @Table(name = "AD_Group_Borrower")
-public class MGroupDebtors extends AuditModel {
+public class MGroupDebtors extends AuditModel  implements CreditEligible{
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -65,4 +68,11 @@ public class MGroupDebtors extends AuditModel {
 
     private String loanOfficer;
     private String notes;
+    @Enumerated(EnumType.STRING)
+    private CustomerEligibilityStatus eligibilityStatus = CustomerEligibilityStatus.ELIGIBLE;
+    private String eligibilityReason;
+    private Date lastEligibilityReviewDate;
+    private BigDecimal creditScore;
+    private BigDecimal creditLimit;
+    private boolean communicationOptOut;
 }

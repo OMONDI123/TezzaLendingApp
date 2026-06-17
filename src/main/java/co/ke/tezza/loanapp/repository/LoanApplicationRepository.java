@@ -402,4 +402,16 @@ public interface LoanApplicationRepository extends JpaRepository<MLoanApplicatio
 
 	List<MLoanApplication> findTop100ByBalanceGreaterThanAndApprovalStageAndIsActiveOrderByLoanApplicationIdAsc(
 			BigDecimal zero, ApprovalStage approved, boolean b);
+
+	List<MLoanApplication> findByIsActiveAndBorrowerTypeAndIndividualBorrower(boolean b, BorrowerTypeEnum individual,
+			MDebtor debtor);
+
+	List<MLoanApplication> findByIsActiveAndBorrowerTypeAndGroupBorrower(boolean b, BorrowerTypeEnum group,
+			MGroupDebtors group2);
+
+	List<MLoanApplication> findByIsActiveAndBorrowerTypeAndInstitutionBorrower(boolean b, BorrowerTypeEnum institution,
+			MInstitutionBorrower institution2);
+
+	List<MLoanApplication> findByApprovalStageAndIsActiveAndExpectedDisbursementDateBefore(ApprovalStage approved,
+			boolean b, Date now);
 }

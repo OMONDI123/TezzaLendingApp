@@ -112,6 +112,8 @@ public class LoanApplicationService {
 	private LoanApprovalWorkFlowService loanApprovalWorkFlowService;
 	@Autowired
 	private UserRepository userRepository;
+	
+	@Autowired private CustomerEligibilityService customerEligibilityService;
 
 	public ResponseEntity<LoanApplicationResponse> requestAmendment(long loanApplicationId) {
 		MLoanApplication existingApplication = loanApplicationRepository.findById(loanApplicationId).orElse(null);
@@ -196,6 +198,18 @@ public class LoanApplicationService {
 			throw new RuntimeException("Failed to process loan applications CSV", e);
 		}
 	}
+	private Long getBorrowerId(LoanApplicationRequest request) {
+		switch (request.getBorrowerType()) {
+		case INDIVIDUAL:
+			
+			return request.getIndividualBorrowerId();
+		case GROUP:
+			return request.getGroupBorrowerId();
+			
+		default:
+			return request.getIndividualBorrowerId();
+		}
+	}
 
 	@Transactional
 	public MLoanApplication applyForLoanFromUpload(LoanApplicationRequest request) {
@@ -203,6 +217,10 @@ public class LoanApplicationService {
 		List<MGuarantorLoan> guarantors = new ArrayList<>();
 		List<DocStatus> docStatusList = List.of(DocStatus.APPROVED, DocStatus.SUBMITTED, DocStatus.DRAFT,
 				DocStatus.PENDING, DocStatus.IN_PROGRESS, DocStatus.UNDER_REVIEW, DocStatus.POSTED, DocStatus.VERIFIED);
+		BorrowerTypeEnum borrowerType=request.getBorrowerType();
+		BigDecimal requestedAmnt=request.getAppliedAmount();
+		long borrowerId=getBorrowerId(request);
+		customerEligibilityService.validateLoanEligibility(borrowerType, borrowerId, requestedAmnt);
 
 		MLoanApplication application = new MLoanApplication();
 		application.setBorrowerType(request.getBorrowerType());
@@ -813,6 +831,10 @@ public class LoanApplicationService {
 		List<MGuarantorLoan> guarantors = new ArrayList<>();
 		List<DocStatus> docStatusList = List.of(DocStatus.APPROVED, DocStatus.SUBMITTED, DocStatus.DRAFT,
 				DocStatus.PENDING, DocStatus.IN_PROGRESS, DocStatus.UNDER_REVIEW, DocStatus.POSTED, DocStatus.VERIFIED);
+		BorrowerTypeEnum borrowerType=request.getBorrowerType();
+		BigDecimal requestedAmnt=request.getAppliedAmount();
+		long borrowerId=getBorrowerId(request);
+		customerEligibilityService.validateLoanEligibility(borrowerType, borrowerId, requestedAmnt);
 
 		MLoanApplication application = new MLoanApplication();
 		application.setBorrowerType(request.getBorrowerType());
@@ -1158,17 +1180,9 @@ public class LoanApplicationService {
 		return new ResponseEntity<LoanApplicationResponse>(message, 200, mapLoanApplication(application));
 	}
 	
-	/**
-	 * Internal method for applying for a loan (used for child loans during consolidation)
-	 * This is a simplified version that reuses the main application logic
-	 * 
-	 * @param request The loan application request
-	 * @return The created MLoanApplication entity
-	 */
+	
 	@Transactional
 	private MLoanApplication applyForLoanInternal(LoanApplicationRequest request) {
-	    // Reuse the main applyForLoan logic but bypass the response wrapper
-	    // We need to create the loan but not return the ResponseEntity
 	    
 	    MLoanApplication existingApplication = null;
 	    List<MGuarantorLoan> guarantors = new ArrayList<>();
@@ -1182,7 +1196,6 @@ public class LoanApplicationService {
 	        application.setAssignee(assignee);
 	    }
 
-	    // === Resolve Borrower Type ===
 	    if (request.getBorrowerType().equals(BorrowerTypeEnum.GROUP)) {
 	        MGroupDebtors groupBorrower = groupBorrowerRepository.findById(request.getGroupBorrowerId())
 	                .orElseThrow(() -> new SetUpExceptions("Group borrower not found"));

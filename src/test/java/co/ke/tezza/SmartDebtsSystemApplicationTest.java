@@ -1,4 +1,4 @@
-package co.ke.smart;
+package co.ke.tezza;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

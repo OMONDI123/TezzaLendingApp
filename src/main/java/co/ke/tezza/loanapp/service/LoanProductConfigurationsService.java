@@ -184,14 +184,7 @@ public class LoanProductConfigurationsService {
         loanProductConfig.setReinstatementGracePeriodDays(request.getReinstatementGracePeriodDays());
         loanProductConfig.setAutoCloseOnFullPayment(request.getAutoCloseOnFullPayment());
 
-        // ------------------------------------------
-        // 10. Sweep Job Configuration (NEW)
-        // ------------------------------------------
-        loanProductConfig.setEnableAutoSweep(request.getEnableAutoSweep());
-        loanProductConfig.setAutoSweepFrequencyHours(request.getAutoSweepFrequencyHours());
-        loanProductConfig.setSweepUpdateState(request.getSweepUpdateState());
-        loanProductConfig.setSweepApplyPenalties(request.getSweepApplyPenalties());
-        loanProductConfig.setSweepSendNotifications(request.getSweepSendNotifications());
+       
 
         // ------------------------------------------
         // 11. Repayment Schedule Configuration
@@ -450,14 +443,7 @@ public class LoanProductConfigurationsService {
         response.setReinstatementGracePeriodDays(entity.getReinstatementGracePeriodDays());
         response.setAutoCloseOnFullPayment(entity.getAutoCloseOnFullPayment());
 
-        // ------------------------------------------
-        // Sweep Job Configuration (NEW)
-        // ------------------------------------------
-        response.setEnableAutoSweep(entity.getEnableAutoSweep());
-        response.setAutoSweepFrequencyHours(entity.getAutoSweepFrequencyHours());
-        response.setSweepUpdateState(entity.getSweepUpdateState());
-        response.setSweepApplyPenalties(entity.getSweepApplyPenalties());
-        response.setSweepSendNotifications(entity.getSweepSendNotifications());
+       
 
         // ------------------------------------------
         // Repayment Schedule Configuration

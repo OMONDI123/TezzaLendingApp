@@ -145,14 +145,7 @@ public class LoanProductConfigResponse {
     private Integer reinstatementGracePeriodDays;
     private Boolean autoCloseOnFullPayment = true;
 
-    // ------------------------------------------
-    // 10. Sweep Job Configuration (NEW)
-    // ------------------------------------------
-    private Boolean enableAutoSweep = false;
-    private Integer autoSweepFrequencyHours = 24;
-    private Boolean sweepUpdateState = true;
-    private Boolean sweepApplyPenalties = true;
-    private Boolean sweepSendNotifications = true;
+   
 
     // ------------------------------------------
     // 11. Repayment Schedule Configuration

@@ -52,6 +52,7 @@ import co.ke.tezza.loanapp.enums.ApprovalStage;
 import co.ke.tezza.loanapp.enums.DocStatus;
 import co.ke.tezza.loanapp.enums.InterestCalculationMethodEnum;
 import co.ke.tezza.loanapp.enums.LoanRepaymentStatus;
+import co.ke.tezza.loanapp.enums.LoanStateEnum;
 import co.ke.tezza.loanapp.enums.PaymentType;
 import co.ke.tezza.loanapp.enums.RepaymentScheduleTypeEnum;
 import co.ke.tezza.loanapp.enums.SettingCategoriesEnum;
@@ -137,9 +138,9 @@ public class PaymentsService {
 					"Waivers are not allowed in this window. Please use the waiver/write offs module.");
 		}
 		// Route based on billId presence
-		 if (request.getLoanId() > 0) {
+		if (request.getLoanId() > 0) {
 			return processLoanPayment(request);
-		 } else {
+		} else {
 			return null;
 		}
 	}
@@ -630,6 +631,8 @@ public class PaymentsService {
 			if (loan.getBalance().compareTo(BigDecimal.ZERO) <= 0) {
 				loan.setDocStatus(DocStatus.COMPLETED);
 				loan.setRepaymentStatus(LoanRepaymentStatus.PAID);
+				loan.setClosedDate(new Date());
+				loan.setLoanState(LoanStateEnum.CLOSED);
 			} else {
 				loan.setRepaymentStatus(LoanRepaymentStatus.PARTIALLY_PAID);
 			}
@@ -640,6 +643,8 @@ public class PaymentsService {
 				loanStatementService.recordCreditNote(loan.getLoanApplicationId(), null, amountToAllocate, null,
 						payment.getReference(), payment.getPaymentDateTime(), payment.getPaymentId());
 			} else if (payment.getPaymentMethod().equals(PaymentType.WRITE_OFF)) {
+				loan.setLoanState(LoanStateEnum.WRITTEN_OFF);
+				loanApplicationRepository.saveAndFlush(loan);
 				loanStatementService.recordWriteOffs(loan.getLoanApplicationId(), null, amountToAllocate, null,
 						payment.getReference(), payment.getPaymentDateTime(), payment.getPaymentId());
 			} else {

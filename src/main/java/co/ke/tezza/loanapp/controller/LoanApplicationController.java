@@ -88,6 +88,21 @@ public class LoanApplicationController {
 		logger.debug("Called LoanApplicationController.applyForLoan");
 		return gsonBuilder.create().toJson(loanApplicationService.applyForLoan(request));
 	}
+	@PostMapping(value = "/requestAmendment/{applicationId}", produces = MediaType.APPLICATION_JSON_VALUE)
+	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanApplicationController','requestAmendment/{applicationId}')")
+	public String requestAmendment(@PathVariable Long applicationId) {
+	    logger.debug("Called LoanApplicationController.requestAmendment");
+	    return gsonBuilder.create().toJson(loanApplicationService.requestAmendment(applicationId));
+	}
+
+	@PostMapping(value = "/cancelLoan/{loanId}", produces = MediaType.APPLICATION_JSON_VALUE)
+	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanApplicationController','cancelLoan/{loanId}')")
+	public String cancelLoan(
+	        @PathVariable Long loanId, 
+	        @RequestParam String cancellationReason) {
+	    logger.debug("Called LoanApplicationController.cancelLoan");
+	    return gsonBuilder.create().toJson(loanApplicationService.cancelLoan(loanId, cancellationReason));
+	}
 	
 	@PostMapping(value = "/reAssignLoan/{loanId}/{newAssigneeId}", produces = MediaType.APPLICATION_JSON_VALUE)
 	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanApplicationController','reAssignLoan/{loanId}/{newAssigneeId}')")

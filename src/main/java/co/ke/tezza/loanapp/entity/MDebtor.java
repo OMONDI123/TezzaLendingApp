@@ -1,5 +1,6 @@
 package co.ke.tezza.loanapp.entity;
 
+import java.math.BigDecimal;
 import java.sql.Blob;
 import java.util.Date;
 import java.util.HashSet;
@@ -8,6 +9,8 @@ import java.util.Set;
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
@@ -24,6 +27,8 @@ import javax.persistence.Table;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
+import co.ke.tezza.loanapp.enums.CustomerEligibilityStatus;
+import co.ke.tezza.loanapp.model.CreditEligible;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -33,7 +38,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Entity
 @Table(name = "AD_Debtor")
-public class MDebtor extends AuditModel {
+public class MDebtor extends AuditModel implements CreditEligible{
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name = "AD_Debtor_ID")
@@ -78,14 +83,14 @@ public class MDebtor extends AuditModel {
 	private String otherIncome;
 
 	// Step 6: Internal Details
-	@ManyToOne(optional = true,fetch = FetchType.EAGER)
+	@ManyToOne(optional = true, fetch = FetchType.EAGER)
 	@JoinColumn(name = "Assignee_ID")
 	private MUser loanOfficer;
 	private String referralSource;
 	private String riskRating;
 	@Column(columnDefinition = "TEXT")
 	private String notes;
-	
+
 	@OneToOne
 	@JoinColumn(name = "AD_User_ID")
 	private MUser user;
@@ -104,6 +109,12 @@ public class MDebtor extends AuditModel {
 	@Column(columnDefinition = "BOOLEAN DEFAULT TRUE")
 	private boolean eligibleToPay;
 
-	
+	@Enumerated(EnumType.STRING)
+	private CustomerEligibilityStatus eligibilityStatus = CustomerEligibilityStatus.ELIGIBLE;
+	private String eligibilityReason;
+	private Date lastEligibilityReviewDate;
+	private BigDecimal creditScore;
+	private BigDecimal creditLimit;
+	private boolean communicationOptOut;
 
 }

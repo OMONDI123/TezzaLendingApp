@@ -65,6 +65,7 @@ public class MInstallments {
     private BigDecimal exemptedPenalties=BigDecimal.ZERO;
     @Column(columnDefinition = "BOOLEAN DEFAULT FALSE")
     private boolean exempted;
+    private BigDecimal serviceFeeCharged;
 	
 	
 	
@@ -146,6 +147,10 @@ public class MInstallments {
 	private String name;
 	
 	private String AD_Installment_UU=UUID.randomUUID().toString();
+	
+	private BigDecimal serviceFeeWaived;
+	private BigDecimal dailyFeeCharged;
+	private BigDecimal dailyFeeWaived;
 	
 
 }

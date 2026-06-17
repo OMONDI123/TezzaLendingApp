@@ -169,23 +169,7 @@ public class MLoanProductConfiguration extends AuditModel {
     @Column(columnDefinition = "BOOLEAN DEFAULT FALSE")
     private Boolean autoCloseOnFullPayment = true; // Auto-close when balance is zero
 
-    // ------------------------------------------
-    // 10. Sweep Job Configuration (NEW)
-    // ------------------------------------------
-    @Column(columnDefinition = "BOOLEAN DEFAULT FALSE")
-    private Boolean enableAutoSweep = false; // Enable automated sweep jobs
     
-    private Integer autoSweepFrequencyHours = 24; // How often to run sweep job
-    
-    @Column(columnDefinition = "BOOLEAN DEFAULT FALSE")
-    private Boolean sweepUpdateState = true; // Update loan state during sweep
-    
-    @Column(columnDefinition = "BOOLEAN DEFAULT FALSE")
-    private Boolean sweepApplyPenalties = true; // Apply penalties during sweep
-    
-    @Column(columnDefinition = "BOOLEAN DEFAULT FALSE")
-    private Boolean sweepSendNotifications = true; // Send notifications during sweep
-
     // ------------------------------------------
     // 11. Repayment Schedule Configuration
     // ------------------------------------------

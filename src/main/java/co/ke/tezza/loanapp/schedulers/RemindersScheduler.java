@@ -625,7 +625,7 @@ public class RemindersScheduler {
 						loan.getIndividualBorrower().getIndividualBorrowerId());
 			}
 			if (loan.getBorrowerType().equals(BorrowerTypeEnum.INSTITUTION)) {
-				return smsRepository.countBySmsTypeAndReminderIdAndInstallmentIdAndDocStatusAndIndividualBorrowerId(
+				return smsRepository.countBySmsTypeAndReminderIdAndInstallmentIdAndDocStatusAndInstitutionBorrowerId(
 						smsType, config.getReminderId(),  installmentId, DocStatus.APPROVED,
 						loan.getInstitutionBorrower().getInstitutionBorrowerId());
 			} else {
@@ -642,7 +642,7 @@ public class RemindersScheduler {
 						loan.getIndividualBorrower().getIndividualBorrowerId());
 			}
 			if (loan.getBorrowerType().equals(BorrowerTypeEnum.INSTITUTION)) {
-				return smsRepository.countBySmsTypeAndReminderIdAndLoanIdAndDocStatusAndIndividualBorrowerId(
+				return smsRepository.countBySmsTypeAndReminderIdAndLoanIdAndDocStatusAndInstitutionBorrowerId(
 						smsType, config.getReminderId(), loanId, DocStatus.APPROVED,
 						loan.getInstitutionBorrower().getInstitutionBorrowerId());
 			} else {
