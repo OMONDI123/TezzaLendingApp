@@ -416,7 +416,7 @@ public interface LoanApplicationRepository extends JpaRepository<MLoanApplicatio
 	List<MLoanApplication> findByApprovalStageAndIsActiveAndExpectedDisbursementDateBefore(ApprovalStage approved,
 			boolean b, Date now);
 
-	List<MLoanApplication> findByIsActiveTrueAndLoanStateAndApprovalStageAndBalaceGreaterThan(LoanStateEnum open,
+	List<MLoanApplication> findByIsActiveTrueAndLoanStateAndApprovalStageAndBalanceGreaterThan(LoanStateEnum open,
 			ApprovalStage approved, BigDecimal zero);
 
 	List<MLoanApplication> findByIsActiveTrueAndBalanceAndLoanStateNot(BigDecimal zero, LoanStateEnum closed);

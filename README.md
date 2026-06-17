@@ -257,10 +257,15 @@ mvnw.cmd spring-boot:run
 Once the application is running, open Swagger UI in your browser:
 
 ```
-http://localhost:8083/tezza/swagger-ui/index.html
+http://localhost:8083/tezza/swagger-ui.html
 ```
 
 From there you can run GET, POST, PUT, and DELETE requests directly against the live API.
+Get the the access token by using the SUPER ADMIN ROLE WITH ALL ACCESS CONTROL BELOW
+{
+  "password": "bunde123@#Kenya",
+  "userName": "omondiaustinebunde@gmail.com"
+}
 
 ---
 
@@ -334,7 +339,7 @@ mvn clean install -U
 - [ ] `application.properties` created with correct values
 - [ ] Upload directory exists and is writable
 - [ ] Application starts cleanly on port 8083
-- [ ] Swagger UI loads at `http://localhost:8083/tezza/swagger-ui/index.html`
+- [ ] Swagger UI loads at `http://localhost:8083/tezza/swagger-ui.html`
 - [ ] All endpoints appear in Swagger
 - [ ] GET / POST / PUT / DELETE requests work from Swagger
 
