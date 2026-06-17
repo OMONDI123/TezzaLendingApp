@@ -74,7 +74,7 @@ public class MInstitutionBorrower extends AuditModel implements CreditEligible {
     private Date lastEligibilityReviewDate;
     private BigDecimal creditScore;
     private BigDecimal creditLimit;
-    private boolean communicationOptOut;
-
+    @Column(columnDefinition = "BOOLEAN DEFAULT FALSE")
+	private boolean communicationOptOut;
 	
 }

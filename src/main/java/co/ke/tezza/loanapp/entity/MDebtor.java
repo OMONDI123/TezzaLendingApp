@@ -115,6 +115,7 @@ public class MDebtor extends AuditModel implements CreditEligible{
 	private Date lastEligibilityReviewDate;
 	private BigDecimal creditScore;
 	private BigDecimal creditLimit;
+	@Column(columnDefinition = "BOOLEAN DEFAULT FALSE")
 	private boolean communicationOptOut;
 
 }
