@@ -24,6 +24,7 @@ import co.ke.tezza.loanapp.entity.MUser;
 import co.ke.tezza.loanapp.enums.ApprovalStage;
 import co.ke.tezza.loanapp.enums.BorrowerTypeEnum;
 import co.ke.tezza.loanapp.enums.DocStatus;
+import co.ke.tezza.loanapp.enums.LoanStateEnum;
 
 @Repository
 public interface LoanApplicationRepository extends JpaRepository<MLoanApplication, Long> {
@@ -414,4 +415,13 @@ public interface LoanApplicationRepository extends JpaRepository<MLoanApplicatio
 
 	List<MLoanApplication> findByApprovalStageAndIsActiveAndExpectedDisbursementDateBefore(ApprovalStage approved,
 			boolean b, Date now);
+
+	List<MLoanApplication> findByIsActiveTrueAndLoanStateAndApprovalStageAndBalaceGreaterThan(LoanStateEnum open,
+			ApprovalStage approved, BigDecimal zero);
+
+	List<MLoanApplication> findByIsActiveTrueAndBalanceAndLoanStateNot(BigDecimal zero, LoanStateEnum closed);
+
+	List<MLoanApplication> findIsActiveTrueAndByLoanState(LoanStateEnum reinstated);
+
+	List<MLoanApplication> findByIsActiveTrueAndApprovalStage(ApprovalStage approved);
 }

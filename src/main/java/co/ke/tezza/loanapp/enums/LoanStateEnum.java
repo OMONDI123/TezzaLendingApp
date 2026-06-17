@@ -8,6 +8,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public enum LoanStateEnum {
     PENDING_APPROVAL("PENDING_APPROVAL", "Pending Approval"),
     APPROVED("APPROVED", "Approved"),
+    REJECTED("REJECTED", "Rejected"),
     OPEN("OPEN", "Open - Active and in good standing"),
     OVERDUE("OVERDUE", "Overdue - Has past due payments"),
     CLOSED("CLOSED", "Closed - Fully repaid"),
