@@ -61,7 +61,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
-public class LoanCommentService {
+public class LoanMessagingService {
 
 	@Autowired
 	private Utils utils;
@@ -1307,7 +1307,7 @@ public class LoanCommentService {
 		});
 	}
 
-	// Add these methods to your existing LoanCommentService class
+	// Add these methods to your existing LoanMessagingService class
 
 	public List<CardexBorrowers> fetchCardexBorrowers(long adOrgId) {
 		String sql = "WITH \n" + "active_loans AS (\n" + "    SELECT * FROM AD_Loan_Application l\n"

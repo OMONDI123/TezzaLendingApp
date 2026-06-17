@@ -26,15 +26,15 @@ import co.ke.tezza.loanapp.model.TriggerMessage;
 import co.ke.tezza.loanapp.response.LoanCommentResponse;
 import co.ke.tezza.loanapp.service.ForceSendSmsService;
 import co.ke.tezza.loanapp.service.JasperReportingServices;
-import co.ke.tezza.loanapp.service.LoanCommentService;
+import co.ke.tezza.loanapp.service.LoanMessagingService;
 import co.ke.tezza.loanapp.util.HibernateProxyTypeAdapter;
 
 @RestController
-@RequestMapping("/loanComments")
-public class LoanCommentController {
+@RequestMapping("/loanMessages")
+public class LoanMessagingController {
 
 	@Autowired
-	private LoanCommentService loanCommentService;
+	private LoanMessagingService loanMessagingService;
 
 	@Autowired
 	private ForceSendSmsService forceSendSmsService;
@@ -52,53 +52,53 @@ public class LoanCommentController {
 	 * Save or update a loan cardex comment entry.
 	 */
 	@PostMapping(value = "/saveOrUpdate", produces = MediaType.APPLICATION_JSON_VALUE)
-	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanCommentController','saveOrUpdate')")
+	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanMessagingController','saveOrUpdate')")
 	public String saveOrUpdate(@RequestBody LoanCommentRequest request) {
-		logger.debug("Called LoanCommentController.saveOrUpdate with request: {}", request);
-		return gsonBuilder.create().toJson(loanCommentService.saveOrUpdate(request));
+		logger.debug("Called LoanMessagingController.saveOrUpdate with request: {}", request);
+		return gsonBuilder.create().toJson(loanMessagingService.saveOrUpdate(request));
 	}
 
 	@PostMapping(value = "/printCardex", produces = MediaType.APPLICATION_JSON_VALUE)
-	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanCommentController','printCardex')")
+	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanMessagingController','printCardex')")
 	public String printCardex(@Valid @RequestBody ReportParams params) {
 		logger.debug("Called LoanApplicationController.printCardex");
 		return gsonBuilder.create().toJson(jasper.printCardex(params));
 	}
 
 	@PostMapping(value = "/sendManualMessage", produces = MediaType.APPLICATION_JSON_VALUE)
-	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanCommentController','sendManualMessage')")
-	public String sendManualMessage(@RequestBody MessageRequest request) {
-		logger.debug("Called LoanCommentController.sendManualMessage with request: {}", request);
-		return gsonBuilder.create().toJson(loanCommentService.sendManualMessages(request));
+	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanMessagingController','sendManualMessage')")
+	public String sendManualMessage(@RequestBody @Valid MessageRequest request) {
+		logger.debug("Called LoanMessagingController.sendManualMessage with request: {}", request);
+		return gsonBuilder.create().toJson(loanMessagingService.sendManualMessages(request));
 	}
 
 	@PostMapping(value = "/resendAlreadySentLoanReminder", produces = MediaType.APPLICATION_JSON_VALUE)
-	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanCommentController','resendAlreadySentLoanReminder')")
+	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanMessagingController','resendAlreadySentLoanReminder')")
 	public String resendAlreadySentLoanReminder(@RequestBody TriggerMessage request) {
-		logger.debug("Called LoanCommentController.resendAlreadySentLoanReminder with request: {}", request);
+		logger.debug("Called LoanMessagingController.resendAlreadySentLoanReminder with request: {}", request);
 		return gsonBuilder.create().toJson(forceSendSmsService.forceSms(request));
 	}
 
 	// ==================== CARDEX ENDPOINTS ====================
 
 	@GetMapping(value = "/getCardexBorrowers/{page}/{size}", produces = MediaType.APPLICATION_JSON_VALUE)
-	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanCommentController','getCardexBorrowers/{page}/{size}')")
+	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanMessagingController','getCardexBorrowers/{page}/{size}')")
 	public String getCardexBorrowers(@PathVariable(value = "page") int page, @PathVariable(value = "size") int size,
 			@QueryParam("dateFrom") Date dateFrom, @QueryParam("dateTo") Date dateTo,
 			@QueryParam("searchTerm") String searchTerm) {
-		logger.debug("Called LoanCommentController.getCardexBorrowers");
-		return gsonBuilder.create().toJson(loanCommentService.getCardexBorrowers(page, size, searchTerm));
+		logger.debug("Called LoanMessagingController.getCardexBorrowers");
+		return gsonBuilder.create().toJson(loanMessagingService.getCardexBorrowers(page, size, searchTerm));
 	}
 
 	@GetMapping(value = "/getCardexByBorrowerId/{page}/{size}", produces = MediaType.APPLICATION_JSON_VALUE)
-	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanCommentController','getCardexByBorrowerId/{page}/{size}')")
-	public String getCardexByBorrowerId(@RequestParam("page") int page, @RequestParam("size") int size,
+	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanMessagingController','getCardexByBorrowerId/{page}/{size}')")
+	public String getCardexByBorrowerId(@PathVariable("page") int page, @PathVariable("size") int size,
 			@RequestParam(value = "borrowerId", required = true) Long borrowerId,
 			@RequestParam(value = "borrowerType", required = true) String borrowerType,
 			@QueryParam("addedById") Long addedById, @QueryParam("dateFrom") Date dateFrom,
 			@QueryParam("dateTo") Date dateTo, @QueryParam("searchTerm") String searchTerm) {
 		return gsonBuilder.create().toJson(
-				loanCommentService.getCardexByBorrower(borrowerType, borrowerId, searchTerm, addedById, page, size));
+				loanMessagingService.getCardexByBorrower(borrowerType, borrowerId, searchTerm, addedById, page, size));
 	}
 
 	
@@ -106,19 +106,19 @@ public class LoanCommentController {
 	// ==================== BORROWER DETAILS ENDPOINTS ====================
 
 	@GetMapping(value = "/getBorroweDetails/{page}/{size}", produces = MediaType.APPLICATION_JSON_VALUE)
-	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanCommentController','getBorroweDetails/{page}/{size}')")
+	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanMessagingController','getBorroweDetails/{page}/{size}')")
 	public String getBorroweDetails(@PathVariable(value = "page") int page, @PathVariable(value = "size") int size,
 			@QueryParam("searchTerm") String searchTerm) {
-		logger.debug("Called LoanCommentController.getBorroweDetails");
-		return gsonBuilder.create().toJson(loanCommentService.getBorrowers(page, size, searchTerm));
+		logger.debug("Called LoanMessagingController.getBorroweDetails");
+		return gsonBuilder.create().toJson(loanMessagingService.getBorrowers(page, size, searchTerm));
 	}
 
 	@GetMapping(value = "/getBorrowersWithMessages/{page}/{size}", produces = MediaType.APPLICATION_JSON_VALUE)
-	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanCommentController','getBorrowersWithMessages/{page}/{size}')")
+	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanMessagingController','getBorrowersWithMessages/{page}/{size}')")
 	public String getBorrowersWithMessages(@PathVariable(value = "page") int page,
 			@PathVariable(value = "size") int size, @QueryParam("dateFrom") String dateFrom,
 			@QueryParam("dateTo") String dateTo, @QueryParam("searchTerm") String searchTerm) {
-		logger.debug("Called LoanCommentController.getBorrowersWithMessages");
+		logger.debug("Called LoanMessagingController.getBorrowersWithMessages");
 
 		Date fromDate = null;
 		Date toDate = null;
@@ -135,7 +135,7 @@ public class LoanCommentController {
 		}
 
 		return gsonBuilder.create()
-				.toJson(loanCommentService.getBorrowersWithMessages(page, size, searchTerm, fromDate, toDate));
+				.toJson(loanMessagingService.getBorrowersWithMessages(page, size, searchTerm, fromDate, toDate));
 	}
 
 	
@@ -145,11 +145,11 @@ public class LoanCommentController {
 	// ==================== MESSAGE CENTER ENDPOINTS ====================
 
 	@GetMapping(value = "/getMessagesSent/{page}/{size}", produces = MediaType.APPLICATION_JSON_VALUE)
-	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanCommentController','getMessagesSent/{page}/{size}')")
+	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanMessagingController','getMessagesSent/{page}/{size}')")
 	public String getMessagesSent(@PathVariable(value = "page") int page, @PathVariable(value = "size") int size,
 			@QueryParam("searchTerm") String searchTerm, @QueryParam("messageStatus") String messageStatus,
 			@QueryParam("dateFrom") String dateFrom, @QueryParam("dateTo") String dateTo) {
-		logger.debug("Called LoanCommentController.getMessagesSent");
+		logger.debug("Called LoanMessagingController.getMessagesSent");
 
 		Date fromDate = null;
 		Date toDate = null;
@@ -166,17 +166,17 @@ public class LoanCommentController {
 		}
 
 		return gsonBuilder.create().toJson(
-				loanCommentService.getAllMessageCenter(page, size, searchTerm, messageStatus, fromDate, toDate));
+				loanMessagingService.getAllMessageCenter(page, size, searchTerm, messageStatus, fromDate, toDate));
 	}
 
 	@GetMapping(value = "/getMessagesSentByBorrower/{page}/{size}", produces = MediaType.APPLICATION_JSON_VALUE)
-	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanCommentController','getMessagesSentByBorrower/{page}/{size}')")
+	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanMessagingController','getMessagesSentByBorrower/{page}/{size}')")
 	public String getMessagesSentByBorrower(@PathVariable(value = "page") int page,
 			@PathVariable(value = "size") int size, @QueryParam("borrowerId") long borrowerId,
 			@QueryParam("borrowerType") String borrowerType, @QueryParam("searchTerm") String searchTerm,
 			@QueryParam("messageStatus") String messageStatus, @QueryParam("dateFrom") String dateFrom,
 			@QueryParam("dateTo") String dateTo) {
-		logger.debug("Called LoanCommentController.getMessagesSentByBorrower");
+		logger.debug("Called LoanMessagingController.getMessagesSentByBorrower");
 
 		Date fromDate = null;
 		Date toDate = null;
@@ -192,7 +192,7 @@ public class LoanCommentController {
 			logger.error("Error parsing dates", e);
 		}
 
-		return gsonBuilder.create().toJson(loanCommentService.getMessagesSentByBorrower(page, size, searchTerm,
+		return gsonBuilder.create().toJson(loanMessagingService.getMessagesSentByBorrower(page, size, searchTerm,
 				messageStatus, fromDate, toDate, borrowerId, borrowerType));
 	}
 	
@@ -203,11 +203,11 @@ public class LoanCommentController {
 	// ==================== SMS REMINDERS ENDPOINTS ====================
 
 	@GetMapping(value = "/getSmsRemindersSent/{page}/{size}", produces = MediaType.APPLICATION_JSON_VALUE)
-	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanCommentController','getSmsRemindersSent/{page}/{size}')")
+	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanMessagingController','getSmsRemindersSent/{page}/{size}')")
 	public String getSmsRemindersSent(@PathVariable(value = "page") int page, @PathVariable(value = "size") int size,
 			@QueryParam("searchTerm") String searchTerm, @QueryParam("messageStatus") String messageStatus,
 			@QueryParam("dateFrom") String dateFrom, @QueryParam("dateTo") String dateTo) {
-		logger.debug("Called LoanCommentController.getSmsRemindersSent");
+		logger.debug("Called LoanMessagingController.getSmsRemindersSent");
 
 		Date fromDate = null;
 		Date toDate = null;
@@ -224,15 +224,15 @@ public class LoanCommentController {
 		}
 
 		return gsonBuilder.create().toJson(
-				loanCommentService.getSmsRemindersSent(page, size, searchTerm, messageStatus, fromDate, toDate));
+				loanMessagingService.getSmsRemindersSent(page, size, searchTerm, messageStatus, fromDate, toDate));
 	}
 
 	@GetMapping(value = "/getBorrowersWithSmsReminders/{page}/{size}", produces = MediaType.APPLICATION_JSON_VALUE)
-	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanCommentController','getBorrowersWithSmsReminders/{page}/{size}')")
+	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanMessagingController','getBorrowersWithSmsReminders/{page}/{size}')")
 	public String getBorrowersWithSmsReminders(@PathVariable(value = "page") int page,
 			@PathVariable(value = "size") int size, @QueryParam("dateFrom") String dateFrom,
 			@QueryParam("dateTo") String dateTo, @QueryParam("searchTerm") String searchTerm) {
-		logger.debug("Called LoanCommentController.getBorrowersWithSmsReminders");
+		logger.debug("Called LoanMessagingController.getBorrowersWithSmsReminders");
 
 		Date fromDate = null;
 		Date toDate = null;
@@ -249,17 +249,17 @@ public class LoanCommentController {
 		}
 
 		return gsonBuilder.create()
-				.toJson(loanCommentService.getBorrowersWithSmsReminders(page, size, searchTerm, fromDate, toDate));
+				.toJson(loanMessagingService.getBorrowersWithSmsReminders(page, size, searchTerm, fromDate, toDate));
 	}
 
 	@GetMapping(value = "/getSmsRemindersSentByBorrowerId/{page}/{size}", produces = MediaType.APPLICATION_JSON_VALUE)
-	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanCommentController','getSmsRemindersSentByBorrowerId/{page}/{size}')")
+	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanMessagingController','getSmsRemindersSentByBorrowerId/{page}/{size}')")
 	public String getSmsRemindersSentByBorrowerId(@PathVariable(value = "page") int page,
 			@PathVariable(value = "size") int size, @QueryParam("borrowerId") long borrowerId,
 			@QueryParam("borrowerType") String borrowerType, @QueryParam("searchTerm") String searchTerm,
 			@QueryParam("messageStatus") String messageStatus, @QueryParam("dateFrom") String dateFrom,
 			@QueryParam("dateTo") String dateTo) {
-		logger.debug("Called LoanCommentController.getSmsRemindersSentByBorrowerId");
+		logger.debug("Called LoanMessagingController.getSmsRemindersSentByBorrowerId");
 
 		Date fromDate = null;
 		Date toDate = null;
@@ -275,7 +275,7 @@ public class LoanCommentController {
 			logger.error("Error parsing dates", e);
 		}
 
-		return gsonBuilder.create().toJson(loanCommentService.getSmsRemindersSentByBorrowerId(page, size, searchTerm,
+		return gsonBuilder.create().toJson(loanMessagingService.getSmsRemindersSentByBorrowerId(page, size, searchTerm,
 				messageStatus, fromDate, toDate, borrowerId, borrowerType));
 	}
 
@@ -287,10 +287,10 @@ public class LoanCommentController {
 	 * Get all comments for a specific loan.
 	 */
 	@GetMapping(value = "/byLoan", produces = MediaType.APPLICATION_JSON_VALUE)
-	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanCommentController','byLoan')")
+	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanMessagingController','byLoan')")
 	public String getByLoan(@RequestParam("loanId") Long loanId) {
-		logger.debug("Called LoanCommentController.getByLoan with loanId: {}", loanId);
-		List<LoanCommentResponse> comments = loanCommentService.getByLoan(loanId);
+		logger.debug("Called LoanMessagingController.getByLoan with loanId: {}", loanId);
+		List<LoanCommentResponse> comments = loanMessagingService.getByLoan(loanId);
 		return gsonBuilder.create().toJson(comments);
 	}
 
@@ -298,10 +298,10 @@ public class LoanCommentController {
 	 * Get all comments for a specific installment.
 	 */
 	@GetMapping(value = "/byInstallment", produces = MediaType.APPLICATION_JSON_VALUE)
-	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanCommentController','byInstallment')")
+	@PreAuthorize("@securityControllAccessService.hasAccessToAPIEndpoint('LoanMessagingController','byInstallment')")
 	public String getByInstallment(@RequestParam("installmentId") Long installmentId) {
-		logger.debug("Called LoanCommentController.getByInstallment with installmentId: {}", installmentId);
-		List<LoanCommentResponse> comments = loanCommentService.getByInstallment(installmentId);
+		logger.debug("Called LoanMessagingController.getByInstallment with installmentId: {}", installmentId);
+		List<LoanCommentResponse> comments = loanMessagingService.getByInstallment(installmentId);
 		return gsonBuilder.create().toJson(comments);
 	}
 

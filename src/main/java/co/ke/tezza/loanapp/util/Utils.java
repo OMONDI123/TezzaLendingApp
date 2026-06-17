@@ -373,7 +373,7 @@ public class Utils {
 
 			// Determine client based on the database username
 			switch (username) {
-			case "smartdebtsuser":
+			case "tezzauser":
 				connect.setClient(SupportedClientsEnum.SMART_DEBT);
 				break;
 			case "membershipappuser":
