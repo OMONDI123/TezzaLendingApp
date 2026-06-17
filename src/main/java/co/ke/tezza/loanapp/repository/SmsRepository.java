@@ -677,5 +677,7 @@ public interface SmsRepository extends JpaRepository<MSms, Long> {
 	Optional<MSms> findTopByReminderIdAndSmsTypeAndBillIdAndDocStatusOrderByTimesTosendDesc(long reminderId,
 			SmsTypeEnum smsType, Long billId, DocStatus approved);
 
+	Optional<MSms> findTopBySmsTypeAndLoanIdAndDocStatusOrderByTimesTosendDesc(SmsTypeEnum any, long anyLong, DocStatus approved);
+
 	
 }

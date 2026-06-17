@@ -64,7 +64,7 @@ public class RemindersScheduler {
 	// Main processing methods
 	// -------------------------------------------------------------------------
 
-	private boolean processRemindersForLoan(MLoanApplication loan, MInstallments inst, LocalDateTime currentTime) {
+	public boolean processRemindersForLoan(MLoanApplication loan, MInstallments inst, LocalDateTime currentTime) {
 		try {
 			MADSysConfig sys = utils.getOrganizationSystemConfiguratinsByDynamicOrganisation(
 					SettingCategoriesEnum.GENERAL_SETTINGS, loan.getAdOrgID());
@@ -95,7 +95,7 @@ public class RemindersScheduler {
 	// Configured reminders (from AD_Reminder_Config)
 	// -------------------------------------------------------------------------
 
-	private boolean processConfiguredSmsTypesForLoan(MLoanApplication loan, MInstallments inst,
+	public boolean processConfiguredSmsTypesForLoan(MLoanApplication loan, MInstallments inst,
 			LocalDateTime currentTime) {
 		List<MRemindersConfiguration> configs = reminderConfigRepository
 				.findByIsActiveAndAdOrgIDOrderByReminderIdDesc(true, loan.getAdOrgID());
@@ -136,7 +136,7 @@ public class RemindersScheduler {
 		return anyReminderSent;
 	}
 
-	private boolean processReminderConfig(MRemindersConfiguration config, MLoanApplication loan, MInstallments inst,
+	public boolean processReminderConfig(MRemindersConfiguration config, MLoanApplication loan, MInstallments inst,
 			LocalDateTime currentTime) {
 		MSmsSetup smsSetup = config.getSmsMessageTemplate();
 		SmsTypeEnum smsType = smsSetup.getSmsType();
@@ -164,7 +164,7 @@ public class RemindersScheduler {
 	// Time and day helpers
 	// -------------------------------------------------------------------------
 
-	private boolean isTimeToSend(MRemindersConfiguration config, LocalDateTime currentTime) {
+	public boolean isTimeToSend(MRemindersConfiguration config, LocalDateTime currentTime) {
 		Boolean sendTimeEnabled = config.getSendTimeEnabled();
 		if (sendTimeEnabled == null || !sendTimeEnabled) {
 			return true;
@@ -199,7 +199,7 @@ public class RemindersScheduler {
 		return false;
 	}
 
-	private boolean isDayAllowedForReminder(MRemindersConfiguration config, LocalDateTime currentTime) {
+	public boolean isDayAllowedForReminder(MRemindersConfiguration config, LocalDateTime currentTime) {
 		ReminderFrequency frequency = config.getReminderFrequency();
 
 		if (frequency != ReminderFrequency.SPECIFIC_DAYS) {
@@ -217,7 +217,7 @@ public class RemindersScheduler {
 		return selectedDays.contains(currentDay);
 	}
 
-	private Days convertToDaysEnum(DayOfWeek dayOfWeek) {
+	public Days convertToDaysEnum(DayOfWeek dayOfWeek) {
 		switch (dayOfWeek) {
 		case MONDAY:
 			return Days.MONDAY;
@@ -242,7 +242,7 @@ public class RemindersScheduler {
 	// Frequency and last‑sent logic (core improvements)
 	// -------------------------------------------------------------------------
 
-	private boolean shouldSendReminder(MRemindersConfiguration config, SmsTypeEnum smsType, MLoanApplication loan,
+	public boolean shouldSendReminder(MRemindersConfiguration config, SmsTypeEnum smsType, MLoanApplication loan,
 			MInstallments installment, LocalDateTime currentTime) {
 		// For guarantor SMS, we defer to per‑guarantor checks inside sending methods
 		if (isGuarantorSmsType(smsType)) {
@@ -260,7 +260,7 @@ public class RemindersScheduler {
 		return isEligibleToSend(config, lastSent, currentTime);
 	}
 
-	private boolean isEligibleToSend(MRemindersConfiguration config, LocalDateTime lastSent,
+	public boolean isEligibleToSend(MRemindersConfiguration config, LocalDateTime lastSent,
 			LocalDateTime currentTime) {
 		ReminderFrequency freq = config.getReminderFrequency();
 
@@ -334,12 +334,12 @@ public class RemindersScheduler {
 		}
 	}
 
-	private int monthsBetween(LocalDateTime start, LocalDateTime end) {
+	public int monthsBetween(LocalDateTime start, LocalDateTime end) {
 		Period p = Period.between(start.toLocalDate(), end.toLocalDate());
 		return p.getYears() * 12 + p.getMonths();
 	}
 
-	private boolean isSameHourMinute(LocalDateTime dt1, LocalDateTime dt2) {
+	public boolean isSameHourMinute(LocalDateTime dt1, LocalDateTime dt2) {
 		return dt1.getHour() == dt2.getHour() && dt1.getMinute() == dt2.getMinute();
 	}
 
@@ -347,7 +347,7 @@ public class RemindersScheduler {
 	// Maximum reminders check
 	// -------------------------------------------------------------------------
 
-	private boolean isWithinMaxRemindersLimit(MRemindersConfiguration config, SmsTypeEnum smsType,
+	public boolean isWithinMaxRemindersLimit(MRemindersConfiguration config, SmsTypeEnum smsType,
 			MLoanApplication loan, MInstallments installment) {
 		Integer maxReminders = config.getMaxReminders();
 		if (maxReminders == null || maxReminders <= 0) {
@@ -391,7 +391,7 @@ public class RemindersScheduler {
 	// Guarantor‑specific frequency check
 	// -------------------------------------------------------------------------
 
-	private boolean shouldSendReminderForGuarantor(MRemindersConfiguration config, SmsTypeEnum smsType,
+	public boolean shouldSendReminderForGuarantor(MRemindersConfiguration config, SmsTypeEnum smsType,
 			MLoanApplication loan, MInstallments installment, MNextOfKin guarantor, LocalDateTime currentTime) {
 		Optional<MSms> lastSms = getLastApprovedSmsForGuarantor(config, smsType, loan, installment, guarantor);
 		LocalDateTime lastSent = lastSms.map(sms -> {
@@ -405,7 +405,7 @@ public class RemindersScheduler {
 	// SMS type classification (unchanged)
 	// -------------------------------------------------------------------------
 
-	private boolean isBorrowerSmsType(SmsTypeEnum smsType) {
+	public boolean isBorrowerSmsType(SmsTypeEnum smsType) {
 		switch (smsType) {
 		case LOAN_OR_DEBT_DUE_REMINDER:
 		case LOAN_OR_DEBT_OVERDUE_REMINDER:
@@ -436,7 +436,7 @@ public class RemindersScheduler {
 		}
 	}
 
-	private boolean isGuarantorSmsType(SmsTypeEnum smsType) {
+	public boolean isGuarantorSmsType(SmsTypeEnum smsType) {
 		switch (smsType) {
 		case GUARANTOR_PAYMENT_REMINDER:
 		case GUARANTOR_LOAN_DUE_REMINDER:
@@ -473,7 +473,7 @@ public class RemindersScheduler {
 		}
 	}
 
-	private boolean isInstallmentLevelSms(SmsTypeEnum smsType) {
+	public boolean isInstallmentLevelSms(SmsTypeEnum smsType) {
 		switch (smsType) {
 		case INSTALLMENT_DUE_REMINDER:
 		case INSTALLMENT_OVERDUE_REMINDER:
@@ -499,7 +499,7 @@ public class RemindersScheduler {
 	// Database query methods (unchanged)
 	// -------------------------------------------------------------------------
 
-	private Optional<MSms> getLastApprovedSmsForRecipientType(MRemindersConfiguration config, SmsTypeEnum smsType,
+	public Optional<MSms> getLastApprovedSmsForRecipientType(MRemindersConfiguration config, SmsTypeEnum smsType,
 			MLoanApplication loan, MInstallments installment, boolean borrowerEligible) {
 		Long loanId = loan.getLoanApplicationId();
 		Long installmentId = installment != null ? installment.getInstallmentId() : null;
@@ -534,7 +534,7 @@ public class RemindersScheduler {
 		}
 	}
 
-	private Optional<MSms> getLastApprovedSmsForGuarantor(MRemindersConfiguration config, SmsTypeEnum smsType,
+	public Optional<MSms> getLastApprovedSmsForGuarantor(MRemindersConfiguration config, SmsTypeEnum smsType,
 			MLoanApplication loan, MInstallments installment, MNextOfKin guarantor) {
 		Long loanId = loan.getLoanApplicationId();
 		Long installmentId = installment != null ? installment.getInstallmentId() : null;
@@ -550,7 +550,7 @@ public class RemindersScheduler {
 		}
 	}
 
-	private Optional<MSms> getLastApprovedSmsForBorrower(MRemindersConfiguration config, SmsTypeEnum smsType,
+	public Optional<MSms> getLastApprovedSmsForBorrower(MRemindersConfiguration config, SmsTypeEnum smsType,
 			MLoanApplication loan, Long installmentId, boolean borrowerEligible) {
 		if (!borrowerEligible)
 			return Optional.empty();
@@ -561,7 +561,7 @@ public class RemindersScheduler {
 		return getLastApprovedSmsForEachLoanAndBorrower(config, smsType, loanId, installmentId, loan);
 	}
 
-	private Optional<MSms> getLastApprovedSmsForEachLoanAndBorrower(MRemindersConfiguration config, SmsTypeEnum smsType,
+	public Optional<MSms> getLastApprovedSmsForEachLoanAndBorrower(MRemindersConfiguration config, SmsTypeEnum smsType,
 	        Long loanId, Long installmentId, MLoanApplication loan) {
 	    // Determine borrower type and the appropriate ID
 	    BorrowerTypeEnum borrowerType = loan.getBorrowerType();
@@ -610,7 +610,7 @@ public class RemindersScheduler {
 	    }
 	}
 
-	private long countBorrowerSmsSent(MRemindersConfiguration config, SmsTypeEnum smsType, MLoanApplication loan,
+	public long countBorrowerSmsSent(MRemindersConfiguration config, SmsTypeEnum smsType, MLoanApplication loan,
 			MInstallments installment, boolean borrowerEligible) {
 		if (!borrowerEligible)
 			return 0;
@@ -655,7 +655,7 @@ public class RemindersScheduler {
 		}
 	}
 
-	private long countGuarantorSmsSent(MRemindersConfiguration config, SmsTypeEnum smsType, MLoanApplication loan,
+	public long countGuarantorSmsSent(MRemindersConfiguration config, SmsTypeEnum smsType, MLoanApplication loan,
 			MInstallments installment, MNextOfKin guarantor) {
 		Long loanId = loan.getLoanApplicationId();
 		Long installmentId = installment != null ? installment.getInstallmentId() : null;
@@ -674,7 +674,7 @@ public class RemindersScheduler {
 	// Due/overdue logic (unchanged)
 	// -------------------------------------------------------------------------
 
-	private boolean shouldProcessReminderByType(MRemindersConfiguration config, SmsTypeEnum smsType,
+	public boolean shouldProcessReminderByType(MRemindersConfiguration config, SmsTypeEnum smsType,
 			MLoanApplication loan, MInstallments installment) {
 		boolean hasActiveInstallments = hasActiveInstallmentsWithBalance(loan);
 		boolean loanOverdue = isLoanOverdue(loan);
@@ -802,7 +802,7 @@ public class RemindersScheduler {
 		}
 	}
 
-	private boolean isWithinDaysBeforeRange(MRemindersConfiguration config, Date targetDate) {
+	public boolean isWithinDaysBeforeRange(MRemindersConfiguration config, Date targetDate) {
 		if (targetDate == null)
 			return false;
 
@@ -818,7 +818,7 @@ public class RemindersScheduler {
 		return daysRemaining == 0;
 	}
 
-	private boolean isWithinDaysAfterRange(MRemindersConfiguration config, Date targetDate) {
+	public boolean isWithinDaysAfterRange(MRemindersConfiguration config, Date targetDate) {
 		if (targetDate == null)
 			return false;
 
@@ -832,28 +832,28 @@ public class RemindersScheduler {
 		return true;
 	}
 
-	private boolean isWithinDefaultDaysBefore(Date targetDate, int defaultDays) {
+	public boolean isWithinDefaultDaysBefore(Date targetDate, int defaultDays) {
 		if (targetDate == null)
 			return false;
 		long daysRemaining = calculateDaysRemaining(targetDate);
 		return daysRemaining > 0 && daysRemaining <= defaultDays;
 	}
 
-	private boolean isWithinDefaultDaysAfter(Date targetDate, int defaultDays) {
+	public boolean isWithinDefaultDaysAfter(Date targetDate, int defaultDays) {
 		if (targetDate == null)
 			return false;
 		long daysOverdue = calculateDaysOverdue(targetDate);
 		return daysOverdue > 0 && daysOverdue <= defaultDays;
 	}
 
-	private boolean shouldProcessDefaultMissedPaymentAlert(MLoanApplication loan) {
+	public boolean shouldProcessDefaultMissedPaymentAlert(MLoanApplication loan) {
 		if (loan.getDueDate() == null)
 			return false;
 		long daysOverdue = calculateDaysOverdue(loan.getDueDate());
 		return daysOverdue > 1;
 	}
 
-	private boolean shouldProcessDefaultStatementNotification(MLoanApplication loan, LocalDateTime currentTime) {
+	public boolean shouldProcessDefaultStatementNotification(MLoanApplication loan, LocalDateTime currentTime) {
 		return isFirstDayOfMonth(currentTime);
 	}
 
@@ -861,7 +861,7 @@ public class RemindersScheduler {
 	// Default system reminders (unchanged)
 	// -------------------------------------------------------------------------
 
-	private boolean processDefaultSmsTypesForLoan(MLoanApplication loan, MInstallments inst,
+	public boolean processDefaultSmsTypesForLoan(MLoanApplication loan, MInstallments inst,
 			LocalDateTime currentTime) {
 		boolean anyReminderSent = false;
 
@@ -1052,111 +1052,111 @@ public class RemindersScheduler {
 	// SMS sending methods (borrower)
 	// -------------------------------------------------------------------------
 
-	private boolean sendLoanDueReminder(MLoanApplication loan, Long reminderId) {
+	public boolean sendLoanDueReminder(MLoanApplication loan, Long reminderId) {
 		if (!utils.isBorrowerEligible(loan))
 			return false;
 		return smsHandlersService.handleLoanDueReminder(loan, reminderId);
 	}
 
-	private boolean sendLoanOverdueReminder(MLoanApplication loan, Long reminderId) {
+	public boolean sendLoanOverdueReminder(MLoanApplication loan, Long reminderId) {
 		if (!utils.isBorrowerEligible(loan))
 			return false;
 		return smsHandlersService.handleLoanOverdueReminder(loan, reminderId);
 	}
 
-	private boolean sendInstallmentDueReminder(MInstallments installment, Long reminderId) {
+	public boolean sendInstallmentDueReminder(MInstallments installment, Long reminderId) {
 		MLoanApplication loan = installment.getLoan();
 		if (!utils.isBorrowerEligible(loan))
 			return false;
 		return smsHandlersService.handleInstallmentDueReminder(installment, reminderId);
 	}
 
-	private boolean sendInstallmentOverdueReminder(MInstallments installment, Long reminderId) {
+	public boolean sendInstallmentOverdueReminder(MInstallments installment, Long reminderId) {
 		MLoanApplication loan = installment.getLoan();
 		if (!utils.isBorrowerEligible(loan))
 			return false;
 		return smsHandlersService.handleInstallmentOverdueReminder(installment, reminderId);
 	}
 
-	private boolean sendInstallmentMissedPayment(MInstallments installment, Long reminderId) {
+	public boolean sendInstallmentMissedPayment(MInstallments installment, Long reminderId) {
 		MLoanApplication loan = installment.getLoan();
 		if (!utils.isBorrowerEligible(loan))
 			return false;
 		return smsHandlersService.handleInstallmentMissedPayment(installment, reminderId);
 	}
 
-	private boolean sendInstallmentPaymentReminder(MInstallments installment, Long reminderId) {
+	public boolean sendInstallmentPaymentReminder(MInstallments installment, Long reminderId) {
 		MLoanApplication loan = installment.getLoan();
 		if (!utils.isBorrowerEligible(loan))
 			return false;
 		return smsHandlersService.handleInstallmentPaymentReminder(installment, reminderId);
 	}
 
-	private boolean sendMissedRepaymentAlert(MLoanApplication loan, Long reminderId) {
+	public boolean sendMissedRepaymentAlert(MLoanApplication loan, Long reminderId) {
 		if (!utils.isBorrowerEligible(loan))
 			return false;
 		return smsHandlersService.handleMissedRepaymentAlert(loan, reminderId);
 	}
 
-	private boolean sendGracePeriodExpiryAlert(MLoanApplication loan, Long reminderId) {
+	public boolean sendGracePeriodExpiryAlert(MLoanApplication loan, Long reminderId) {
 		if (!utils.isBorrowerEligible(loan))
 			return false;
 		return smsHandlersService.handleGracePeriodExpiryAlert(loan, reminderId);
 	}
 
-	private boolean sendStatementReadyNotification(MLoanApplication loan, Long reminderId) {
+	public boolean sendStatementReadyNotification(MLoanApplication loan, Long reminderId) {
 		if (!utils.isBorrowerEligible(loan))
 			return false;
 		return smsHandlersService.handleStatementReadyNotification(loan, reminderId);
 	}
 
-	private boolean sendInstallmentGenerationNotification(MInstallments installment, Long reminderId) {
+	public boolean sendInstallmentGenerationNotification(MInstallments installment, Long reminderId) {
 		return smsHandlersService.handleInstallmentGenerationNotification(installment, reminderId);
 	}
 
-	private boolean sendInstallmentAdjustmentNotification(MInstallments installment, Long reminderId) {
+	public boolean sendInstallmentAdjustmentNotification(MInstallments installment, Long reminderId) {
 		return smsHandlersService.handleInstallmentAdjustmentNotification(installment, installment.getAmount(),
 				"Schedule adjustment", "Manual", reminderId);
 	}
 
-	private boolean sendInstallmentRescheduleNotification(MInstallments installment, Long reminderId) {
+	public boolean sendInstallmentRescheduleNotification(MInstallments installment, Long reminderId) {
 		return smsHandlersService.handleInstallmentRescheduleNotification(installment, installment.getPeriodEnd(),
 				installment.getPeriodEnd(), "Rescheduled", BigDecimal.ZERO, reminderId);
 	}
 
-	private boolean sendRepaymentScheduleUpdate(MLoanApplication loan, Long reminderId) {
+	public boolean sendRepaymentScheduleUpdate(MLoanApplication loan, Long reminderId) {
 		return smsHandlersService.handleRepaymentScheduleUpdate(loan, loan.getBalance(), loan.getDueDate(), 1,
 				"Schedule update", reminderId);
 	}
 
-	private boolean sendRepaymentRescheduleRequest(MLoanApplication loan, Long reminderId) {
+	public boolean sendRepaymentRescheduleRequest(MLoanApplication loan, Long reminderId) {
 		return smsHandlersService.handleRepaymentRescheduleRequest(loan, new Date(), "Pending", reminderId);
 	}
 
-	private boolean sendRepaymentRescheduleApproval(MLoanApplication loan, Long reminderId) {
+	public boolean sendRepaymentRescheduleApproval(MLoanApplication loan, Long reminderId) {
 		return smsHandlersService.handleRepaymentRescheduleApproval(loan, loan.getBalance(), 1, loan.getTermInDays(),
 				new Date(), reminderId);
 	}
 
-	private boolean sendRepaymentRescheduleRejection(MLoanApplication loan, Long reminderId) {
+	public boolean sendRepaymentRescheduleRejection(MLoanApplication loan, Long reminderId) {
 		return smsHandlersService.handleRepaymentRescheduleRejection(loan, "Rejected", new Date(), reminderId);
 	}
 
-	private boolean sendLoanRestructuringNotification(MLoanApplication loan, Long reminderId) {
+	public boolean sendLoanRestructuringNotification(MLoanApplication loan, Long reminderId) {
 		return smsHandlersService.handleLoanRestructuringNotification(loan, loan.getBalance(), loan.getTermInDays(),
 				loan.getBalance(), loan.getBalance(), new Date(), reminderId);
 	}
 
-	private boolean sendTopUpLoanDisbursement(MLoanApplication loan, Long reminderId) {
+	public boolean sendTopUpLoanDisbursement(MLoanApplication loan, Long reminderId) {
 		return smsHandlersService.handleTopUpLoanDisbursement(loan, loan.getBalance(), loan.getBalance(), new Date(),
 				reminderId);
 	}
 
-	private boolean sendLoanClosureNotification(MLoanApplication loan, Long reminderId) {
+	public boolean sendLoanClosureNotification(MLoanApplication loan, Long reminderId) {
 		return smsHandlersService.handleLoanClosureNotification(loan, loan.getBalance(), reminderId);
 	}
 
-	private boolean sendAutoDebitFailure(MLoanApplication loan, Long reminderId) {
+	public boolean sendAutoDebitFailure(MLoanApplication loan, Long reminderId) {
 		return smsHandlersService.handleAutoDebitFailure(loan, loan.getBalance(), "Insufficient funds", new Date(),
 				"Auto Debit", reminderId);
 	}
@@ -1165,7 +1165,7 @@ public class RemindersScheduler {
 	// SMS sending methods (guarantor)
 	// -------------------------------------------------------------------------
 
-	private boolean sendGuarantorPaymentReminder(MNextOfKin guarantor, MLoanApplication loan, Long reminderId) {
+	public boolean sendGuarantorPaymentReminder(MNextOfKin guarantor, MLoanApplication loan, Long reminderId) {
 		MRemindersConfiguration config = reminderConfigRepository.findById(reminderId).orElse(null);
 		if (config != null && config.getMaxReminders() != null && config.getMaxReminders() > 0) {
 			long sentCount = countGuarantorSmsSent(config, SmsTypeEnum.GUARANTOR_PAYMENT_REMINDER, loan, null,
@@ -1180,7 +1180,7 @@ public class RemindersScheduler {
 		return smsHandlersService.handleGuarantorPaymentReminder(guarantor, loan, reminderId);
 	}
 
-	private boolean sendGuarantorPaymentReminders(MLoanApplication loan, Long reminderId) {
+	public boolean sendGuarantorPaymentReminders(MLoanApplication loan, Long reminderId) {
 		boolean success = true;
 		boolean borrowerEligible = utils.isBorrowerEligible(loan);
 		Set<MNextOfKin> targetGuarantors = getTargetGuarantors(loan, borrowerEligible);
@@ -1190,7 +1190,7 @@ public class RemindersScheduler {
 		return success;
 	}
 
-	private boolean sendGuarantorLoanDueReminder(MLoanApplication loan, Long reminderId) {
+	public boolean sendGuarantorLoanDueReminder(MLoanApplication loan, Long reminderId) {
 		boolean success = true;
 		boolean borrowerEligible = utils.isBorrowerEligible(loan);
 		Set<MNextOfKin> targetGuarantors = getTargetGuarantors(loan, borrowerEligible);
@@ -1200,7 +1200,7 @@ public class RemindersScheduler {
 		return success;
 	}
 
-	private boolean sendGuarantorLoanDueReminderToGuarantor(MNextOfKin guarantor, MLoanApplication loan,
+	public boolean sendGuarantorLoanDueReminderToGuarantor(MNextOfKin guarantor, MLoanApplication loan,
 			Long reminderId) {
 		MRemindersConfiguration config = reminderConfigRepository.findById(reminderId).orElse(null);
 		if (config != null && config.getMaxReminders() != null && config.getMaxReminders() > 0) {
@@ -1233,7 +1233,7 @@ public class RemindersScheduler {
 		}
 	}
 
-	private boolean sendGuarantorLoanOverdueAlert(MLoanApplication loan, Long reminderId) {
+	public boolean sendGuarantorLoanOverdueAlert(MLoanApplication loan, Long reminderId) {
 		boolean success = true;
 		boolean borrowerEligible = utils.isBorrowerEligible(loan);
 		Set<MNextOfKin> targetGuarantors = getTargetGuarantors(loan, borrowerEligible);
@@ -1243,7 +1243,7 @@ public class RemindersScheduler {
 		return success;
 	}
 
-	private boolean sendGuarantorLoanOverdueAlertToGuarantor(MNextOfKin guarantor, MLoanApplication loan,
+	public boolean sendGuarantorLoanOverdueAlertToGuarantor(MNextOfKin guarantor, MLoanApplication loan,
 			Long reminderId) {
 		MRemindersConfiguration config = reminderConfigRepository.findById(reminderId).orElse(null);
 		if (config != null && config.getMaxReminders() != null && config.getMaxReminders() > 0) {
@@ -1259,7 +1259,7 @@ public class RemindersScheduler {
 		return smsHandlersService.handleGuarantorLoanOverdueAlert(guarantor, loan, reminderId);
 	}
 
-	private boolean sendGuarantorLoanDefaultNotification(MLoanApplication loan, Long reminderId) {
+	public boolean sendGuarantorLoanDefaultNotification(MLoanApplication loan, Long reminderId) {
 		boolean success = true;
 		boolean borrowerEligible = utils.isBorrowerEligible(loan);
 		Set<MNextOfKin> targetGuarantors = getTargetGuarantors(loan, borrowerEligible);
@@ -1269,7 +1269,7 @@ public class RemindersScheduler {
 		return success;
 	}
 
-	private boolean sendGuarantorLoanDefaultNotificationToGuarantor(MNextOfKin guarantor, MLoanApplication loan,
+	public boolean sendGuarantorLoanDefaultNotificationToGuarantor(MNextOfKin guarantor, MLoanApplication loan,
 			Long reminderId) {
 		MRemindersConfiguration config = reminderConfigRepository.findById(reminderId).orElse(null);
 		if (config != null && config.getMaxReminders() != null && config.getMaxReminders() > 0) {
@@ -1297,7 +1297,7 @@ public class RemindersScheduler {
 		}
 	}
 
-	private boolean sendGuarantorInstallmentDueReminder(MLoanApplication loan, Long reminderId) {
+	public boolean sendGuarantorInstallmentDueReminder(MLoanApplication loan, Long reminderId) {
 		MInstallments installment = getNextDueInstallment(loan);
 		if (installment == null)
 			return false;
@@ -1312,7 +1312,7 @@ public class RemindersScheduler {
 		return success;
 	}
 
-	private boolean sendGuarantorInstallmentDueReminderToGuarantor(MNextOfKin guarantor, MInstallments installment,
+	public boolean sendGuarantorInstallmentDueReminderToGuarantor(MNextOfKin guarantor, MInstallments installment,
 			MLoanApplication loan, Long reminderId) {
 		MRemindersConfiguration config = reminderConfigRepository.findById(reminderId).orElse(null);
 		if (config != null && config.getMaxReminders() != null && config.getMaxReminders() > 0) {
@@ -1348,7 +1348,7 @@ public class RemindersScheduler {
 		}
 	}
 
-	private boolean sendGuarantorInstallmentOverdueAlert(MLoanApplication loan, Long reminderId) {
+	public boolean sendGuarantorInstallmentOverdueAlert(MLoanApplication loan, Long reminderId) {
 		MInstallments installment = getOverdueInstallment(loan);
 		if (installment == null)
 			return false;
@@ -1363,7 +1363,7 @@ public class RemindersScheduler {
 		return success;
 	}
 
-	private boolean sendGuarantorInstallmentOverdueAlertToGuarantor(MNextOfKin guarantor, MInstallments installment,
+	public boolean sendGuarantorInstallmentOverdueAlertToGuarantor(MNextOfKin guarantor, MInstallments installment,
 			MLoanApplication loan, Long reminderId) {
 		MRemindersConfiguration config = reminderConfigRepository.findById(reminderId).orElse(null);
 		if (config != null && config.getMaxReminders() != null && config.getMaxReminders() > 0) {
@@ -1392,7 +1392,7 @@ public class RemindersScheduler {
 		}
 	}
 
-	private boolean sendGuarantorInstallmentMissedPayment(MLoanApplication loan, Long reminderId) {
+	public boolean sendGuarantorInstallmentMissedPayment(MLoanApplication loan, Long reminderId) {
 		MInstallments installment = getMissedInstallment(loan);
 		if (installment == null)
 			return false;
@@ -1407,7 +1407,7 @@ public class RemindersScheduler {
 		return success;
 	}
 
-	private boolean sendGuarantorInstallmentMissedPaymentToGuarantor(MNextOfKin guarantor, MInstallments installment,
+	public boolean sendGuarantorInstallmentMissedPaymentToGuarantor(MNextOfKin guarantor, MInstallments installment,
 			MLoanApplication loan, Long reminderId) {
 		MRemindersConfiguration config = reminderConfigRepository.findById(reminderId).orElse(null);
 		if (config != null && config.getMaxReminders() != null && config.getMaxReminders() > 0) {
@@ -1436,7 +1436,7 @@ public class RemindersScheduler {
 		}
 	}
 
-	private boolean sendGuarantorInterestAccrualNotification(MLoanApplication loan, Long reminderId) {
+	public boolean sendGuarantorInterestAccrualNotification(MLoanApplication loan, Long reminderId) {
 		boolean success = true;
 		boolean borrowerEligible = utils.isBorrowerEligible(loan);
 		Set<MNextOfKin> targetGuarantors = getTargetGuarantors(loan, borrowerEligible);
@@ -1446,7 +1446,7 @@ public class RemindersScheduler {
 		return success;
 	}
 
-	private boolean sendGuarantorInterestAccrualNotificationToGuarantor(MNextOfKin guarantor, MLoanApplication loan,
+	public boolean sendGuarantorInterestAccrualNotificationToGuarantor(MNextOfKin guarantor, MLoanApplication loan,
 			Long reminderId) {
 		MRemindersConfiguration config = reminderConfigRepository.findById(reminderId).orElse(null);
 		if (config != null && config.getMaxReminders() != null && config.getMaxReminders() > 0) {
@@ -1495,7 +1495,7 @@ public class RemindersScheduler {
 		}
 	}
 
-	private boolean sendGuarantorPenaltyCalculationNotification(MLoanApplication loan, Long reminderId) {
+	public boolean sendGuarantorPenaltyCalculationNotification(MLoanApplication loan, Long reminderId) {
 		boolean success = true;
 		boolean borrowerEligible = utils.isBorrowerEligible(loan);
 		Set<MNextOfKin> targetGuarantors = getTargetGuarantors(loan, borrowerEligible);
@@ -1505,7 +1505,7 @@ public class RemindersScheduler {
 		return success;
 	}
 
-	private boolean sendGuarantorPenaltyCalculationNotificationToGuarantor(MNextOfKin guarantor, MLoanApplication loan,
+	public boolean sendGuarantorPenaltyCalculationNotificationToGuarantor(MNextOfKin guarantor, MLoanApplication loan,
 			Long reminderId) {
 		MRemindersConfiguration config = reminderConfigRepository.findById(reminderId).orElse(null);
 		if (config != null && config.getMaxReminders() != null && config.getMaxReminders() > 0) {
@@ -1539,7 +1539,7 @@ public class RemindersScheduler {
 		}
 	}
 
-	private boolean sendGuarantorStatementNotification(MLoanApplication loan, Long reminderId) {
+	public boolean sendGuarantorStatementNotification(MLoanApplication loan, Long reminderId) {
 		boolean success = true;
 		boolean borrowerEligible = utils.isBorrowerEligible(loan);
 		Set<MNextOfKin> targetGuarantors = getTargetGuarantors(loan, borrowerEligible);
@@ -1549,7 +1549,7 @@ public class RemindersScheduler {
 		return success;
 	}
 
-	private boolean sendGuarantorStatementNotificationToGuarantor(MNextOfKin guarantor, MLoanApplication loan,
+	public boolean sendGuarantorStatementNotificationToGuarantor(MNextOfKin guarantor, MLoanApplication loan,
 			Long reminderId) {
 		MRemindersConfiguration config = reminderConfigRepository.findById(reminderId).orElse(null);
 		if (config != null && config.getMaxReminders() != null && config.getMaxReminders() > 0) {
@@ -1592,7 +1592,7 @@ public class RemindersScheduler {
 		}
 	}
 
-	private boolean sendGuarantorMissedRepaymentAlert(MLoanApplication loan, Long reminderId) {
+	public boolean sendGuarantorMissedRepaymentAlert(MLoanApplication loan, Long reminderId) {
 		boolean success = true;
 		boolean borrowerEligible = utils.isBorrowerEligible(loan);
 		Set<MNextOfKin> targetGuarantors = getTargetGuarantors(loan, borrowerEligible);
@@ -1602,7 +1602,7 @@ public class RemindersScheduler {
 		return success;
 	}
 
-	private boolean sendGuarantorMissedRepaymentAlertToGuarantor(MNextOfKin guarantor, MLoanApplication loan,
+	public boolean sendGuarantorMissedRepaymentAlertToGuarantor(MNextOfKin guarantor, MLoanApplication loan,
 			Long reminderId) {
 		MRemindersConfiguration config = reminderConfigRepository.findById(reminderId).orElse(null);
 		if (config != null && config.getMaxReminders() != null && config.getMaxReminders() > 0) {
@@ -1622,7 +1622,7 @@ public class RemindersScheduler {
 	// sendReminderByType – dispatches to the appropriate sending method
 	// -------------------------------------------------------------------------
 
-	private boolean sendReminderByType(SmsTypeEnum smsType, MLoanApplication loan, MInstallments installment,
+	public boolean sendReminderByType(SmsTypeEnum smsType, MLoanApplication loan, MInstallments installment,
 			Long reminderId) {
 		try {
 			switch (smsType) {
@@ -1701,11 +1701,11 @@ public class RemindersScheduler {
 	// -------------------------------------------------------------------------
 
 
-	private Set<MNextOfKin> getTargetGuarantors(MLoanApplication loan, boolean borrowerEligible) {
+	public Set<MNextOfKin> getTargetGuarantors(MLoanApplication loan, boolean borrowerEligible) {
 		return loan.getGuarantors() != null ? loan.getGuarantors() : new HashSet<>();
 	}
 
-	private boolean hasBeenSentToday(SmsTypeEnum smsType, MLoanApplication loan, MInstallments installment) {
+	public boolean hasBeenSentToday(SmsTypeEnum smsType, MLoanApplication loan, MInstallments installment) {
 		try {
 			LocalDateTime startOfDay = LocalDateTime.now().toLocalDate().atStartOfDay();
 
@@ -1735,7 +1735,7 @@ public class RemindersScheduler {
 		}
 	}
 
-	private boolean checkIfBorrowerSmsSentAfter(SmsTypeEnum smsType, MLoanApplication loan, MInstallments installment,
+	public boolean checkIfBorrowerSmsSentAfter(SmsTypeEnum smsType, MLoanApplication loan, MInstallments installment,
 			LocalDateTime after) {
 		if (!utils.isBorrowerEligible(loan))
 			return false;
@@ -1778,7 +1778,7 @@ public class RemindersScheduler {
 		}
 	}
 
-	private boolean hasBeenSentTodayForGuarantor(SmsTypeEnum smsType, MLoanApplication loan, MNextOfKin guarantor) {
+	public boolean hasBeenSentTodayForGuarantor(SmsTypeEnum smsType, MLoanApplication loan, MNextOfKin guarantor) {
 		try {
 			LocalDateTime startOfDay = LocalDateTime.now().toLocalDate().atStartOfDay();
 			return smsRepository.existsBySmsTypeAndLoanIdAndGuarantorIdAndTimesTosendAfter(smsType,
@@ -1788,7 +1788,7 @@ public class RemindersScheduler {
 		}
 	}
 
-	private boolean hasBeenSentThisMonth(SmsTypeEnum smsType, MLoanApplication loan, MInstallments installment) {
+	public boolean hasBeenSentThisMonth(SmsTypeEnum smsType, MLoanApplication loan, MInstallments installment) {
 		try {
 			LocalDateTime firstDayOfMonth = LocalDateTime.now().withDayOfMonth(1).toLocalDate().atStartOfDay();
 
@@ -1820,19 +1820,19 @@ public class RemindersScheduler {
 		}
 	}
 
-	private boolean isSameDay(LocalDateTime date1, LocalDateTime date2) {
+	public boolean isSameDay(LocalDateTime date1, LocalDateTime date2) {
 		if (date1 == null || date2 == null)
 			return false;
 		return date1.toLocalDate().isEqual(date2.toLocalDate());
 	}
 
-	private LocalDateTime convertToLocalDateTime(Date date) {
+	public LocalDateTime convertToLocalDateTime(Date date) {
 		if (date == null)
 			return null;
 		return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
 	}
 
-	private long calculateDaysRemaining(Date dueDate) {
+	public long calculateDaysRemaining(Date dueDate) {
 		if (dueDate == null)
 			return 0;
 		LocalDate dueLocal = dueDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
@@ -1840,7 +1840,7 @@ public class RemindersScheduler {
 		return ChronoUnit.DAYS.between(today, dueLocal);
 	}
 
-	private long calculateDaysOverdue(Date dueDate) {
+	public long calculateDaysOverdue(Date dueDate) {
 		if (dueDate == null)
 			return 0;
 		LocalDate dueLocal = dueDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
@@ -1849,7 +1849,7 @@ public class RemindersScheduler {
 		return daysOverdue > 0 ? daysOverdue : 0;
 	}
 
-	private boolean hasActiveInstallmentsWithBalance(MLoanApplication loan) {
+	public boolean hasActiveInstallmentsWithBalance(MLoanApplication loan) {
 		try {
 			List<MInstallments> activeInstallments = installmentRepository
 					.findByIsActiveAndLoanAndBalanceGreaterThanOrderByPeriodEndAsc(true, loan, BigDecimal.ZERO);
@@ -1859,7 +1859,7 @@ public class RemindersScheduler {
 		}
 	}
 
-	private MInstallments getNextDueInstallment(MLoanApplication loan) {
+	public MInstallments getNextDueInstallment(MLoanApplication loan) {
 		try {
 			Date now = new Date();
 			List<MInstallments> dueInstallments = installmentRepository
@@ -1871,7 +1871,7 @@ public class RemindersScheduler {
 		}
 	}
 
-	private MInstallments getOverdueInstallment(MLoanApplication loan) {
+	public MInstallments getOverdueInstallment(MLoanApplication loan) {
 		try {
 			List<MInstallments> overdueInstallments = installmentRepository
 					.findByIsActiveAndLoanAndBalanceGreaterThanAndPeriodEndBeforeOrderByPeriodEndDesc(true, loan,
@@ -1882,7 +1882,7 @@ public class RemindersScheduler {
 		}
 	}
 
-	private MInstallments getMissedInstallment(MLoanApplication loan) {
+	public MInstallments getMissedInstallment(MLoanApplication loan) {
 		MInstallments installment = getOverdueInstallment(loan);
 		if (installment == null)
 			return null;
@@ -1890,7 +1890,7 @@ public class RemindersScheduler {
 		return daysOverdue > 1 ? installment : null;
 	}
 
-	private Date calculateGracePeriodEnd(MLoanApplication loan) {
+	public Date calculateGracePeriodEnd(MLoanApplication loan) {
 		if (loan.getExpectedDisbursementDate() == null)
 			return null;
 
@@ -1910,23 +1910,23 @@ public class RemindersScheduler {
 		return cal.getTime();
 	}
 
-	private boolean isLoanOverdue(MLoanApplication loan) {
+	public boolean isLoanOverdue(MLoanApplication loan) {
 		if (loan.getDueDate() == null)
 			return false;
 		return calculateDaysOverdue(loan.getDueDate()) > 0;
 	}
 
-	private boolean isInstallmentOverdue(MInstallments installment) {
+	public boolean isInstallmentOverdue(MInstallments installment) {
 		if (installment == null || installment.getPeriodEnd() == null)
 			return false;
 		return calculateDaysOverdue(installment.getPeriodEnd()) > 0;
 	}
 
-	private boolean isFirstDayOfMonth(LocalDateTime dateTime) {
+	public boolean isFirstDayOfMonth(LocalDateTime dateTime) {
 		return dateTime.getDayOfMonth() == 1;
 	}
 
-	private Date calculateInterestAccrualDate(MLoanApplication loan) {
+	public Date calculateInterestAccrualDate(MLoanApplication loan) {
 		if (loan.getDueDate() == null)
 			return new Date();
 		Calendar cal = Calendar.getInstance();

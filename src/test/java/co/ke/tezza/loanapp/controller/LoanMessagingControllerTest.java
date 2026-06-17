@@ -83,10 +83,7 @@ class LoanMessagingControllerTest {
         mapper = new ObjectMapper();
         mapper.disable(SerializationFeature.WRITE_ENUMS_USING_TO_STRING);
         mapper.findAndRegisterModules();
-        // Force this enum to (de)serialize as a plain JSON string (its name), regardless of
-        // any extra constructor args it carries internally. Without this, writeValueAsString()
-        // produces an object-shaped value for "messageForm" that Spring's Jackson converter then
-        // fails to read back ("wrong number of arguments"), causing a 400 on /sendManualMessage.
+        
         mapper.configOverride(MessageForm.class).setFormat(JsonFormat.Value.forShape(JsonFormat.Shape.STRING));
     }
 

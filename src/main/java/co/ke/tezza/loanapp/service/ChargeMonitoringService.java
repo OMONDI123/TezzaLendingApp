@@ -32,7 +32,7 @@ public class ChargeMonitoringService {
 	/**
 	 * Calculate total charges (interest + penalty) with null safety
 	 */
-	private BigDecimal getTotalCharges(MLoanApplication loan) {
+	public BigDecimal getTotalCharges(MLoanApplication loan) {
 		if (loan == null) {
 			return BigDecimal.ZERO;
 		}
@@ -54,7 +54,7 @@ public class ChargeMonitoringService {
 	 * Calculate percentage of charges relative to principal amount Formula: (total
 	 * charges / principal) * 100
 	 */
-	private BigDecimal getTotalPercentageCharged(MLoanApplication loan) {
+	public BigDecimal getTotalPercentageCharged(MLoanApplication loan) {
 		if (loan == null) {
 			return BigDecimal.ZERO;
 		}
@@ -82,7 +82,7 @@ public class ChargeMonitoringService {
 	 * array where: - result[0] = interest proportion (0-1) - result[1] = penalty
 	 * proportion (0-1)
 	 */
-	private BigDecimal[] calculateChargeProportions(MLoanApplication loan) {
+	public BigDecimal[] calculateChargeProportions(MLoanApplication loan) {
 		BigDecimal[] proportions = new BigDecimal[] { BigDecimal.ZERO, BigDecimal.ZERO };
 
 		if (loan == null) {
@@ -152,7 +152,7 @@ public class ChargeMonitoringService {
 	/**
 	 * Calculate excess amount over the allowed cap
 	 */
-	private BigDecimal calculateExcessAmount(MLoanApplication loan) {
+	public BigDecimal calculateExcessAmount(MLoanApplication loan) {
 		if (loan == null || loan.getLoanProductConfiguration() == null) {
 			return BigDecimal.ZERO;
 		}
@@ -188,7 +188,7 @@ public class ChargeMonitoringService {
 	/**
 	 * Calculate the exact amount needed to bring charges down to allowed percentage
 	 */
-	private BigDecimal calculateRequiredExemption(MLoanApplication loan) {
+	public BigDecimal calculateRequiredExemption(MLoanApplication loan) {
 		if (loan == null || loan.getLoanProductConfiguration() == null) {
 			return BigDecimal.ZERO;
 		}
