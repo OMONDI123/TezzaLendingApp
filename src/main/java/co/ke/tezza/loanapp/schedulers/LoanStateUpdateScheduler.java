@@ -16,10 +16,9 @@ import co.ke.tezza.loanapp.repository.LoanApplicationRepository;
 import co.ke.tezza.loanapp.service.SmsHandlersService;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -30,11 +29,13 @@ public class LoanStateUpdateScheduler {
 
     private final LoanApplicationRepository loanApplicationRepository;
     private final SmsHandlersService smsHandlersService;
-    
+
     private static final ZoneId SYSTEM_ZONE = ZoneId.systemDefault();
 
+   
+
     /**
-     * Runs every hour to update loan states based on configuration rules
+     * Runs every hour to update loan states based on configuration rules.
      */
     @Scheduled(cron = "0 0 0/1 * * *")
     @Transactional
@@ -43,12 +44,14 @@ public class LoanStateUpdateScheduler {
         Date now = new Date();
 
         try {
-            // Fetch all active loans once to avoid race conditions
-            List<MLoanApplication> allActiveLoans = loanApplicationRepository
-                    .findByIsActiveTrueAndApprovalStage(ApprovalStage.APPROVED);
-            
-            // Process loans through state machine
-            for (MLoanApplication loan : allActiveLoans) {
+            // FIX #1: fetch BOTH approved and draft loans so cancellation logic runs
+            List<MLoanApplication> allLoans = new ArrayList<>();
+            allLoans.addAll(loanApplicationRepository
+                    .findByIsActiveTrueAndApprovalStage(ApprovalStage.APPROVED));
+            allLoans.addAll(loanApplicationRepository
+                    .findByIsActiveTrueAndApprovalStage(ApprovalStage.DRAFT));
+
+            for (MLoanApplication loan : allLoans) {
                 try {
                     processLoanStateTransition(loan, now);
                 } catch (Exception e) {
@@ -62,25 +65,25 @@ public class LoanStateUpdateScheduler {
         }
     }
 
-    /**
-     * Single state machine to process loan transitions
-     */
+    // -----------------------------------------------------------------------
+    // Core state machine
+    // -----------------------------------------------------------------------
+
     private void processLoanStateTransition(MLoanApplication loan, Date now) {
         LoanStateEnum currentState = loan.getLoanState();
-        MLoanProductConfiguration config = loan.getLoanProductConfiguration();
-        
-        // Skip terminal states
+
+        // Skip terminal states immediately
         if (isTerminalState(currentState)) {
             return;
         }
 
-        // 1. Handle zero balance - highest priority
-        if (hasZeroBalance(loan)) {
+        // 1. Zero balance has highest priority (except for PENDING_APPROVAL)
+        if (currentState != LoanStateEnum.PENDING_APPROVAL && hasZeroBalance(loan)) {
             closeLoan(loan, now, "AUTO_CLOSE_ZERO_BALANCE");
             return;
         }
 
-        // 2. Handle state-specific transitions
+        // 2. State-specific handling
         switch (currentState) {
             case PENDING_APPROVAL:
                 processPendingApproval(loan, now);
@@ -95,78 +98,74 @@ public class LoanStateUpdateScheduler {
                 processReinstatedLoan(loan, now);
                 break;
             default:
-                log.debug("No processing needed for loan {} in state {}", loan.getLoanApplicationId(), currentState);
+                log.debug("No processing needed for loan {} in state {}",
+                        loan.getLoanApplicationId(), currentState);
         }
     }
 
-    /**
-     * Process OPEN loans - check for overdue or closure
-     */
+    // -----------------------------------------------------------------------
+    // Per-state processors
+    // -----------------------------------------------------------------------
+
     private void processOpenLoan(MLoanApplication loan, Date now) {
         if (loan.getDueDate() == null) {
             log.warn("Loan {} has no due date, cannot process", loan.getLoanApplicationId());
             return;
         }
 
-        // Check if loan is overdue
         if (loan.getDueDate().before(now)) {
-            // Set overdue since date to the due date (not now) for accurate write-off calculation
+            // Record the original due date as the overdue anchor for write-off calculations
             loan.setOverdueSinceDate(loan.getDueDate());
-            
-            // Transition to OVERDUE
             transitionLoanState(loan, LoanStateEnum.OVERDUE, now, "AUTO_OVERDUE_UPDATE");
-            
-            // Send overdue notification
+
+            loanApplicationRepository.save(loan);
+            log.info("Loan {} marked as OVERDUE (Due date: {})",
+                    loan.getLoanApplicationId(), loan.getDueDate());
+
             try {
                 smsHandlersService.handleLoanOverdueReminder(loan, null);
             } catch (Exception e) {
-                log.warn("Failed to send overdue notification for loan {}: {}", 
+                log.warn("Failed to send overdue notification for loan {}: {}",
                         loan.getLoanApplicationId(), e.getMessage());
             }
-            
-            log.info("Loan {} marked as OVERDUE (Due date: {})", 
-                    loan.getLoanApplicationId(), loan.getDueDate());
         }
     }
 
-    /**
-     * Process OVERDUE loans - check for write-off
-     */
     private void processOverdueLoan(MLoanApplication loan, Date now) {
         MLoanProductConfiguration config = loan.getLoanProductConfiguration();
-        
+
         if (config == null || config.getDaysToWriteOff() == null || config.getDaysToWriteOff() <= 0) {
             log.debug("Write-off not configured for loan {}", loan.getLoanApplicationId());
             return;
         }
 
-        Date overdueSince = loan.getOverdueSinceDate();
+        Date overdueSince = loan.getOverdueSinceDate() != null
+                ? loan.getOverdueSinceDate()
+                : loan.getDueDate();
+
         if (overdueSince == null) {
-            overdueSince = loan.getDueDate();
-            if (overdueSince == null) {
-                log.warn("Loan {} has no overdue date or due date", loan.getLoanApplicationId());
-                return;
-            }
+            log.warn("Loan {} has no overdue date or due date", loan.getLoanApplicationId());
+            return;
         }
 
         long daysOverdue = calculateDaysBetween(overdueSince, now);
-        
         if (daysOverdue >= config.getDaysToWriteOff()) {
             writeOffLoan(loan, now, daysOverdue);
         }
     }
 
     /**
-     * Process PENDING_APPROVAL loans - check for cancellation
+     * FIX #2: Only called for DRAFT/PENDING_APPROVAL loans.
+     * The guard on ApprovalStage.DRAFT was previously dead code because
+     * updateLoanStates() only fetched APPROVED loans.
      */
     private void processPendingApproval(MLoanApplication loan, Date now) {
-        // Only process DRAFT loans
+        // Only process DRAFT stage
         if (loan.getApprovalStage() != ApprovalStage.DRAFT) {
             return;
         }
 
         MLoanProductConfiguration config = loan.getLoanProductConfiguration();
-        
         if (config == null || config.getDaysToCancel() == null || config.getDaysToCancel() <= 0) {
             return;
         }
@@ -178,20 +177,24 @@ public class LoanStateUpdateScheduler {
         }
 
         long daysSinceCreation = calculateDaysBetween(createdDate, now);
-        
         if (daysSinceCreation >= config.getDaysToCancel()) {
             cancelLoan(loan, now, daysSinceCreation);
         }
     }
 
     /**
-     * Process REINSTATED loans - check grace period expiry
+     * FIX #3: grace period of 0 now means "expire immediately" (> not >=).
+     * The old check `<= 0` skipped zero-grace-period configs entirely.
      */
     private void processReinstatedLoan(MLoanApplication loan, Date now) {
         MLoanProductConfiguration config = loan.getLoanProductConfiguration();
-        
-        if (config == null || config.getReinstatementGracePeriodDays() == null 
-                || config.getReinstatementGracePeriodDays() <= 0) {
+
+        if (config == null || config.getReinstatementGracePeriodDays() == null) {
+            return;
+        }
+
+        // Negative grace period is invalid configuration — skip
+        if (config.getReinstatementGracePeriodDays() < 0) {
             return;
         }
 
@@ -202,20 +205,19 @@ public class LoanStateUpdateScheduler {
         }
 
         long daysSinceReinstatement = calculateDaysBetween(reinstatementDate, now);
-        
-        // Still within grace period - do nothing
+
+        // Still within grace period — do nothing
         if (daysSinceReinstatement < config.getReinstatementGracePeriodDays()) {
             return;
         }
 
-        // Grace period expired - determine next state
-        if (loan.getBalance() == null || loan.getBalance().compareTo(BigDecimal.ZERO) <= 0) {
-            // Zero balance - close the loan
-            closeLoan(loan, now, "AUTO_CLOSE_AFTER_REINSTATEMENT");
+        // Grace period expired — zero balance closes the loan
+        if (hasZeroBalance(loan)) {
+            closeLoan(loan, now, "AUTO_CLOSE_ZERO_BALANCE");
             return;
         }
 
-        // Check if should write off based on original overdue days
+        // Check whether the loan should be written off based on total days overdue
         if (config.getDaysToWriteOff() != null && config.getDaysToWriteOff() > 0) {
             Date dueDate = loan.getDueDate();
             if (dueDate != null) {
@@ -227,25 +229,26 @@ public class LoanStateUpdateScheduler {
             }
         }
 
-        // Otherwise, go back to OVERDUE
+        // Otherwise return to OVERDUE
         transitionLoanState(loan, LoanStateEnum.OVERDUE, now, "AUTO_REINSTATEMENT_GRACE_EXPIRED");
-        log.info("Loan {} reinstatement grace period expired, returned to OVERDUE", 
+        loanApplicationRepository.save(loan);
+        log.info("Loan {} reinstatement grace period expired, returned to OVERDUE",
                 loan.getLoanApplicationId());
     }
 
-    /**
-     * Close a loan (handle all closure logic)
-     */
+    // -----------------------------------------------------------------------
+    // Terminal action helpers
+    // -----------------------------------------------------------------------
+
     private void closeLoan(MLoanApplication loan, Date now, String trigger) {
         if (!isValidTransition(loan.getLoanState(), LoanStateEnum.CLOSED)) {
-            log.warn("Invalid transition from {} to CLOSED for loan {}", 
+            log.warn("Invalid transition from {} to CLOSED for loan {}",
                     loan.getLoanState(), loan.getLoanApplicationId());
             return;
         }
 
         transitionLoanState(loan, LoanStateEnum.CLOSED, now, trigger);
-        loan.setClosedDate(now);
-        loan.setRepaymentStatus(LoanRepaymentStatus.PAID);
+        // transitionLoanState already sets closedDate and repaymentStatus=PAID
 
         loanApplicationRepository.save(loan);
         log.info("Loan {} closed (Trigger: {})", loan.getLoanApplicationId(), trigger);
@@ -253,81 +256,73 @@ public class LoanStateUpdateScheduler {
         try {
             smsHandlersService.handleLoanClosureNotification(loan, loan.getBalance(), null);
         } catch (Exception e) {
-            log.warn("Failed to send closure notification for loan {}: {}", 
+            log.warn("Failed to send closure notification for loan {}: {}",
                     loan.getLoanApplicationId(), e.getMessage());
         }
     }
 
-    /**
-     * Write off a loan (handle all write-off logic)
-     */
     private void writeOffLoan(MLoanApplication loan, Date now, long daysOverdue) {
         if (!isValidTransition(loan.getLoanState(), LoanStateEnum.WRITTEN_OFF)) {
-            log.warn("Invalid transition from {} to WRITTEN_OFF for loan {}", 
+            log.warn("Invalid transition from {} to WRITTEN_OFF for loan {}",
                     loan.getLoanState(), loan.getLoanApplicationId());
             return;
         }
 
-        transitionLoanState(loan, LoanStateEnum.WRITTEN_OFF, now, "AUTO_WRITE_OFF");
-        loan.setWriteOffDate(now);
         loan.setWriteOffReason("Auto-write-off after " + daysOverdue + " days overdue");
-        loan.setRepaymentStatus(LoanRepaymentStatus.DEFAULTED);
+        transitionLoanState(loan, LoanStateEnum.WRITTEN_OFF, now, "AUTO_WRITE_OFF");
+        // transitionLoanState already sets writeOffDate and repaymentStatus=DEFAULTED
 
         loanApplicationRepository.save(loan);
-        log.info("Loan {} written off (Overdue for {} days)", 
-                loan.getLoanApplicationId(), daysOverdue);
+        log.info("Loan {} written off (Overdue for {} days)", loan.getLoanApplicationId(), daysOverdue);
 
         try {
-            smsHandlersService.handleLoanWriteOffNotification(loan, loan.getBalance(), 
-                    loan.getWriteOffReason(), null);
+            smsHandlersService.handleLoanWriteOffNotification(
+                    loan, loan.getBalance(), loan.getWriteOffReason(), null);
         } catch (Exception e) {
-            log.warn("Failed to send write-off notification for loan {}: {}", 
+            log.warn("Failed to send write-off notification for loan {}: {}",
                     loan.getLoanApplicationId(), e.getMessage());
         }
     }
 
-    /**
-     * Cancel a loan (handle all cancellation logic)
-     */
     private void cancelLoan(MLoanApplication loan, Date now, long daysSinceCreation) {
         if (!isValidTransition(loan.getLoanState(), LoanStateEnum.CANCELLED)) {
-            log.warn("Invalid transition from {} to CANCELLED for loan {}", 
+            log.warn("Invalid transition from {} to CANCELLED for loan {}",
                     loan.getLoanState(), loan.getLoanApplicationId());
             return;
         }
 
-        transitionLoanState(loan, LoanStateEnum.CANCELLED, now, "AUTO_CANCEL");
-        loan.setCancelledDate(now);
         loan.setCancellationReason("Auto-cancelled after " + daysSinceCreation + " days");
+        transitionLoanState(loan, LoanStateEnum.CANCELLED, now, "AUTO_CANCEL");
+        // transitionLoanState already sets cancelledDate
 
         loanApplicationRepository.save(loan);
-        log.info("Loan {} auto-cancelled (Pending for {} days)", 
+        log.info("Loan {} auto-cancelled (Pending for {} days)",
                 loan.getLoanApplicationId(), daysSinceCreation);
 
         try {
             smsHandlersService.handleLoanCancellation(loan, loan.getCancellationReason());
         } catch (Exception e) {
-            log.warn("Failed to send cancellation notification for loan {}: {}", 
+            log.warn("Failed to send cancellation notification for loan {}: {}",
                     loan.getLoanApplicationId(), e.getMessage());
         }
     }
 
-    /**
-     * Centralized state transition with validation
-     */
-    private void transitionLoanState(MLoanApplication loan, LoanStateEnum newState, Date now, String trigger) {
+    // -----------------------------------------------------------------------
+    // Internal state transition (private — no DB save)
+    // -----------------------------------------------------------------------
+
+    private void transitionLoanState(MLoanApplication loan, LoanStateEnum newState,
+                                     Date now, String trigger) {
         if (!isValidTransition(loan.getLoanState(), newState)) {
             throw new IllegalStateException(
-                String.format("Invalid transition from %s to %s for loan %d", 
-                    loan.getLoanState(), newState, loan.getLoanApplicationId())
-            );
+                    String.format("Invalid transition from %s to %s for loan %d",
+                            loan.getLoanState(), newState, loan.getLoanApplicationId()));
         }
 
         loan.setLoanState(newState);
         loan.setStateChangeDate(now);
         loan.setLastStateChangeTrigger(trigger);
-        
-        // Set specific dates based on new state
+
         switch (newState) {
             case OVERDUE:
                 if (loan.getOverdueSinceDate() == null) {
@@ -353,57 +348,12 @@ public class LoanStateUpdateScheduler {
         }
     }
 
-    /**
-     * Helper methods
-     */
-    private boolean hasZeroBalance(MLoanApplication loan) {
-        return loan.getBalance() != null && loan.getBalance().compareTo(BigDecimal.ZERO) == 0;
-    }
-
-    private boolean isTerminalState(LoanStateEnum state) {
-        return state == LoanStateEnum.CLOSED || state == LoanStateEnum.CANCELLED 
-                || state == LoanStateEnum.WRITTEN_OFF || state == LoanStateEnum.REJECTED;
-    }
-
-    private long calculateDaysBetween(Date start, Date end) {
-        if (start == null || end == null) {
-            return 0;
-        }
-        return ChronoUnit.DAYS.between(
-            start.toInstant().atZone(SYSTEM_ZONE).toLocalDate(),
-            end.toInstant().atZone(SYSTEM_ZONE).toLocalDate()
-        );
-    }
-
-    private boolean isValidTransition(LoanStateEnum currentState, LoanStateEnum newState) {
-        if (currentState == newState) return true;
-
-        switch (currentState) {
-            case PENDING_APPROVAL:
-                return newState == LoanStateEnum.OPEN || newState == LoanStateEnum.CANCELLED
-                        || newState == LoanStateEnum.REJECTED;
-            case OPEN:
-                return newState == LoanStateEnum.OVERDUE || newState == LoanStateEnum.CLOSED
-                        || newState == LoanStateEnum.CANCELLED;
-            case OVERDUE:
-                return newState == LoanStateEnum.WRITTEN_OFF || newState == LoanStateEnum.CLOSED
-                        || newState == LoanStateEnum.REINSTATED;
-            case REINSTATED:
-                return newState == LoanStateEnum.OVERDUE || newState == LoanStateEnum.WRITTEN_OFF
-                        || newState == LoanStateEnum.CLOSED;
-            case WRITTEN_OFF:
-                return newState == LoanStateEnum.REINSTATED;
-            case CLOSED:
-            case CANCELLED:
-            case REJECTED:
-                return false;
-            default:
-                return false;
-        }
-    }
+    // -----------------------------------------------------------------------
+    // Public API — manual / forced transitions
+    // -----------------------------------------------------------------------
 
     /**
-     * Public methods for manual intervention
+     * FIX #4: capture the PREVIOUS state before the transition so the log is correct.
      */
     @Transactional
     public boolean transitionLoanState(Long loanId, LoanStateEnum newState, String trigger) {
@@ -414,12 +364,13 @@ public class LoanStateUpdateScheduler {
                 return false;
             }
 
+            LoanStateEnum previousState = loan.getLoanState(); // capture BEFORE transition
             Date now = new Date();
             transitionLoanState(loan, newState, now, trigger);
             loanApplicationRepository.save(loan);
-            
-            log.info("Loan {} transitioned from {} to {} (Trigger: {})", 
-                    loanId, loan.getLoanState(), newState, trigger);
+
+            log.info("Loan {} transitioned from {} to {} (Trigger: {})",
+                    loanId, previousState, newState, trigger);
             return true;
 
         } catch (Exception e) {
@@ -429,9 +380,66 @@ public class LoanStateUpdateScheduler {
     }
 
     @Transactional
-    public boolean forceUpdateLoanState(Long loanId, LoanStateEnum newState, String reason, MUser approvedBy) {
-        log.warn("FORCE STATE UPDATE requested for loan {} to {} by {}", 
+    public boolean forceUpdateLoanState(Long loanId, LoanStateEnum newState,
+                                        String reason, MUser approvedBy) {
+        log.warn("FORCE STATE UPDATE requested for loan {} to {} by {}",
                 loanId, newState, approvedBy != null ? approvedBy.getFullName() : "SYSTEM");
         return transitionLoanState(loanId, newState, "FORCED_UPDATE: " + reason);
+    }
+
+    // -----------------------------------------------------------------------
+    // Helpers
+    // -----------------------------------------------------------------------
+
+    private boolean hasZeroBalance(MLoanApplication loan) {
+        return loan.getBalance() != null
+                && loan.getBalance().compareTo(BigDecimal.ZERO) == 0;
+    }
+
+    private boolean isTerminalState(LoanStateEnum state) {
+        return state == LoanStateEnum.CLOSED
+                || state == LoanStateEnum.CANCELLED
+                || state == LoanStateEnum.WRITTEN_OFF
+                || state == LoanStateEnum.REJECTED;
+    }
+
+    private long calculateDaysBetween(Date start, Date end) {
+        if (start == null || end == null) {
+            return 0;
+        }
+        return ChronoUnit.DAYS.between(
+                start.toInstant().atZone(SYSTEM_ZONE).toLocalDate(),
+                end.toInstant().atZone(SYSTEM_ZONE).toLocalDate());
+    }
+
+    private boolean isValidTransition(LoanStateEnum currentState, LoanStateEnum newState) {
+        if (currentState == newState) return true;
+
+        switch (currentState) {
+            case PENDING_APPROVAL:
+                return newState == LoanStateEnum.OPEN
+                        || newState == LoanStateEnum.CANCELLED
+                        || newState == LoanStateEnum.REJECTED;
+            case OPEN:
+                return newState == LoanStateEnum.OVERDUE
+                        || newState == LoanStateEnum.CLOSED
+                        || newState == LoanStateEnum.CANCELLED;
+            case OVERDUE:
+                return newState == LoanStateEnum.WRITTEN_OFF
+                        || newState == LoanStateEnum.CLOSED
+                        || newState == LoanStateEnum.REINSTATED;
+            case REINSTATED:
+                return newState == LoanStateEnum.OVERDUE
+                        || newState == LoanStateEnum.WRITTEN_OFF
+                        || newState == LoanStateEnum.CLOSED;
+            case WRITTEN_OFF:
+                return newState == LoanStateEnum.REINSTATED;
+            case CLOSED:
+            case CANCELLED:
+            case REJECTED:
+                return false;
+            default:
+                return false;
+        }
     }
 }
